@@ -32,7 +32,7 @@ for ci = 1:length(conditions)
     cfg.method           = 'ft_statistics_montecarlo';
     cfg.statistic        = 'ft_statfun_indepsamplesT'; 
     cfg.correctm         = 'cluster';
-    cfg.clusteralpha     = 0.01; 
+    cfg.clusteralpha     = 0.05; 
     cfg.clustertail      = 0; % plus and minus
     cfg.clusterstatistic = 'maxsum'; % set sum
     cfg.clusterthreshold = 'nonparametric_common';
@@ -90,8 +90,9 @@ for ci = 1:length(conditions)
         time_idx = find(any(cluster_mask, 1));
         time_range = stat.time(time_idx);
 
-        % skip clusters shorter than 50ms
-        if isempty(time_range) || (time_range(end) - time_range(1)) < 0.05
+        % skip clusters outside 50–100ms duration
+        cluster_dur = time_range(end) - time_range(1);
+        if isempty(time_range) || cluster_dur < 0.05 || cluster_dur > 0.1
             continue
         end
 
@@ -129,8 +130,9 @@ for ci = 1:length(conditions)
         time_idx = find(any(cluster_mask, 1));
         time_range = stat.time(time_idx);
 
-        % skip clusters shorter than 50ms
-        if isempty(time_range) || (time_range(end) - time_range(1)) < 0.05
+        % skip clusters outside 50–100ms duration
+        cluster_dur = time_range(end) - time_range(1);
+        if isempty(time_range) || cluster_dur < 0.05 || cluster_dur > 0.1
             continue
         end
 
@@ -152,7 +154,7 @@ for ci = 1:length(conditions)
     end
 end
 
-%% figure each cluster
+% figure each cluster
 clear;
 config;
 
