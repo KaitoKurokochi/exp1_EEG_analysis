@@ -39,7 +39,7 @@ for ci = 1:length(conditions)
         cfg.method           = 'ft_statistics_montecarlo';
         cfg.statistic        = 'ft_statfun_indepsamplesT';
         cfg.correctm         = 'cluster';
-        cfg.clusteralpha     = 0.05;
+        cfg.clusteralpha     = 0.001;
         cfg.clustertail      = 0;
         cfg.clusterstatistic = 'maxsum';
         cfg.clusterthreshold = 'nonparametric_common';
@@ -115,18 +115,16 @@ vals.mx_abs_grp  = mx_abs_grp;
 vals.mx_abs_diff = mx_abs_diff;
 save(fullfile(res_dir, 'val.mat'), 'vals', '-v7.3');
 
-%% figure - topo
-% Layout per band x condition (one PNG each):
-%   Row 1: Exp power
-%   Row 2: Nov power
-%   Row 3: Exp - Nov diff  (* = significant channels from CBPT mask)
-%   Columns: 0, 50, 100, ..., 500 ms
+%% figure - all-band time overview (5 bands x 11 times, one SVG per condition)
+% Rows:    Theta / Alpha / Beta / Low-gamma / High-gamma  (top to bottom)
+% Columns: 0, 50, 100, ..., 500 ms
+% Each cell: Exp - Nov power difference  (* = CBPT significant channels)
 clear;
 config;
 
 stat_data_dir = fullfile(prj_dir, 'result', 'stat_freq_cbpt');
 freq_data_dir = fullfile(prj_dir, 'result', 'freq_group_cond');
-res_dir       = fullfile(prj_dir, 'result', 'fig_stat_freq_cbpt_topo');
+res_dir       = fullfile(prj_dir, 'result', 'fig_freq_overview_topo');
 if ~exist(res_dir, 'dir'), mkdir(res_dir); end
 
 load(fullfile(stat_data_dir, 'val.mat'));
@@ -142,343 +140,136 @@ n_bands = size(bands, 1);
 times   = 0:0.05:0.5;
 n_times = length(times);
 
-% layout constants (pixels)
-topo_sz  = 220;
-label_w  = 80;
-title_h  = 40;
-header_h = 34;
-cb_w     = 55;
-pad      = 8;
+band_labels = {'Theta', 'Alpha', 'Beta', 'Low \gamma', 'High \gamma'};
 
-fig_w_px = label_w + n_times * topo_sz + cb_w + pad;
-fig_h_px = title_h + header_h + 3 * topo_sz + pad;
+% layout constants (cm, target: Frontiers full-page width = 17.4 cm)
+topo_sz     = 200;    % off-screen topo capture resolution (px)
+fig_w_cm    = 17.4;
+label_w_cm  = 1.5;
+cb_w_cm     = 1.0;
+pad_cm      = 0.10;
+header_h_cm = 0.50;
 
-disp('--- creating figures ---');
+topo_cm  = (fig_w_cm - label_w_cm - cb_w_cm - pad_cm) / n_times;
+fig_h_cm = header_h_cm + n_bands * topo_cm + pad_cm;
+
+disp('--- creating 5-band x 11-time overview figures ---');
 for ci = 1:length(conditions)
-    load(fullfile(freq_data_dir, ['exp_', conditions{ci}, '.mat'])); freq_exp = freq; clear freq;
-    load(fullfile(freq_data_dir, ['nov_', conditions{ci}, '.mat'])); freq_nov = freq; clear freq;
+    cond = conditions{ci};
+
+    load(fullfile(freq_data_dir, ['exp_', cond, '.mat'])); freq_exp = freq; clear freq;
+    load(fullfile(freq_data_dir, ['nov_', cond, '.mat'])); freq_nov = freq; clear freq;
+
+    topo_imgs = cell(n_bands, n_times);
 
     for bi = 1:n_bands
-        zlim_grp  = [-vals.mx_abs_grp(bi),  vals.mx_abs_grp(bi)];
-        zlim_diff = [-vals.mx_abs_diff(bi),  vals.mx_abs_diff(bi)];
+        zlim_diff = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
+        s = load(fullfile(stat_data_dir, [cond, '_', bands{bi,2}, '.mat']));
 
-        % load spatio-temporal stat (mask: n_chans x n_stat_times)
-        s = load(fullfile(stat_data_dir, [conditions{ci}, '_', bands{bi,2}, '.mat']));
-
-        % capture topomaps into images (off-screen)
-        topo_imgs = cell(3, n_times);
         for ti = 1:n_times
             t = times(ti);
 
             cfg_sel           = [];
             cfg_sel.frequency = bands{bi, 1};
-            cfg_sel.latency   = [t-0.001, t+0.001];
+            cfg_sel.latency   = [t - 0.001, t + 0.001];
             cfg_avg            = [];
             cfg_avg.keeptrials = 'no';
             avg_exp  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp));
             avg_nov  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov));
+
             cfg_math           = [];
             cfg_math.operation = 'x1 - x2';
             cfg_math.parameter = 'powspctrm';
             freq_diff = ft_math(cfg_math, avg_exp, avg_nov);
 
-            % stat.mask is [n_chans x n_times] (freq averaged by avgoverfreq)
             [~, t_idx] = min(abs(s.stat.time - t));
-            mask_t = s.stat.mask(:, t_idx); % n_chans x 1
+            mask_t = s.stat.mask(:, t_idx);
 
-            row_data  = {avg_exp,      avg_nov,      freq_diff};
-            row_zlims = {zlim_grp,     zlim_grp,     zlim_diff};
-            row_masks = {logical([]),  logical([]),   mask_t};
-
-            for r = 1:3
-                fig_tmp = figure('Visible', 'off', 'Units', 'pixels', ...
-                    'Position', [0 0 topo_sz topo_sz]);
-                cfg_t          = [];
-                cfg_t.colorbar = 'no';
-                cfg_t.layout   = 'easycapM11.mat';
-                cfg_t.colormap = 'jet';
-                cfg_t.zlim     = row_zlims{r};
-                cfg_t.comment  = 'no';
-                cfg_t.title    = ' ';
-                if any(row_masks{r}(:))
-                    cfg_t.highlight        = 'on';
-                    cfg_t.highlightchannel = find(row_masks{r});
-                    cfg_t.highlightsymbol  = '*';
-                    cfg_t.highlightcolor   = [0 0 0];
-                else
-                    cfg_t.highlight = 'off';
-                end
-                ft_topoplotTFR(cfg_t, row_data{r});
-                topo_imgs{r, ti} = print(fig_tmp, '-RGBImage');
-                close(fig_tmp);
-            end
-        end
-
-        % resize to exact topo_sz
-        for r = 1:3
-            for ti = 1:n_times
-                topo_imgs{r, ti} = imresize(topo_imgs{r, ti}, [topo_sz, topo_sz]);
-            end
-        end
-
-        % assemble composite figure
-        fig = figure('Visible', 'off', 'Units', 'pixels', ...
-            'Position', [0, 0, fig_w_px, fig_h_px]);
-
-        for r = 1:3
-            for c = 1:n_times
-                l = (label_w + (c-1)*topo_sz) / fig_w_px;
-                b = (pad      + (3-r)*topo_sz) / fig_h_px;
-                ax = axes('Position', [l, b, topo_sz/fig_w_px, topo_sz/fig_h_px]); %#ok<LAXES>
-                image(ax, topo_imgs{r, c});
-                axis(ax, 'off');
-            end
-        end
-
-        % time labels
-        for c = 1:n_times
-            l = (label_w + (c-1)*topo_sz) / fig_w_px;
-            b = (pad + 3*topo_sz)          / fig_h_px;
-            annotation(fig, 'textbox', [l, b, topo_sz/fig_w_px, header_h/fig_h_px], ...
-                'String', sprintf('%d ms', round(times(c)*1000)), ...
-                'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-                'VerticalAlignment', 'middle', 'FontSize', 9);
-        end
-
-        % row labels
-        row_labels = {'Exp', 'Nov', 'Exp - Nov'};
-        for r = 1:3
-            b = (pad + (3-r)*topo_sz) / fig_h_px;
-            annotation(fig, 'textbox', [0, b, label_w/fig_w_px, topo_sz/fig_h_px], ...
-                'String', row_labels{r}, 'EdgeColor', 'none', 'Rotation', 90, ...
-                'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-                'FontSize', 11, 'FontWeight', 'bold');
-        end
-
-        % title
-        annotation(fig, 'textbox', ...
-            [label_w/fig_w_px, (pad+header_h+3*topo_sz)/fig_h_px, ...
-             n_times*topo_sz/fig_w_px, title_h/fig_h_px], ...
-            'String', sprintf('%s band – %s', bands{bi,2}, conditions{ci}), ...
-            'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-            'VerticalAlignment', 'middle', 'FontSize', 13, 'FontWeight', 'bold');
-
-        % colorbars
-        cb_l   = (label_w + n_times*topo_sz + 4) / fig_w_px;
-        cb_w_n = (cb_w - 8) / fig_w_px;
-        zlims_cb = {zlim_grp, zlim_grp, zlim_diff};
-        for r = 1:3
-            b_cb  = (pad + (3-r)*topo_sz) / fig_h_px;
-            h_cb  = topo_sz / fig_h_px;
-            ax_cb = axes('Position', [cb_l, b_cb, cb_w_n, h_cb], 'Visible', 'off'); %#ok<LAXES>
-            colormap(ax_cb, jet(256));
-            clim(ax_cb, zlims_cb{r});
-            colorbar(ax_cb, 'Position', [cb_l, b_cb, cb_w_n, h_cb]);
-        end
-
-        out_path = fullfile(res_dir, [conditions{ci}, '_', bands{bi,2}, '.png']);
-        exportgraphics(fig, out_path, 'Resolution', 150);
-        close(fig);
-        fprintf('Saved: %s\n', out_path);
-    end
-end
-
-disp('Done.');
-
-%% figure - diff topo (Go / No-Go / Go-NoGo per band)
-% Layout per band (one PNG each):
-%   Row 1 (Go):       Exp - Nov diff, * = significant channels
-%   Row 2 (No-Go):    Exp - Nov diff, * = significant channels
-%   Row 3 (Go-NoGo):  (Exp-Nov Go) - (Exp-Nov No-Go), no CBPT
-%   Columns: 0, 50, 100, ..., 500 ms
-clear;
-config;
-
-stat_data_dir = fullfile(prj_dir, 'result', 'stat_freq_cbpt');
-freq_data_dir = fullfile(prj_dir, 'result', 'freq_group_cond');
-res_dir       = fullfile(prj_dir, 'result', 'fig_supp_freq_diff_topo');
-if ~exist(res_dir, 'dir'), mkdir(res_dir); end
-
-load(fullfile(stat_data_dir, 'val.mat'));
-
-bands = { ...
-    [4  7],   'Theta'; ...
-    [7  13],  'alpha'; ...
-    [13 30],  'beta'; ...
-    [30 45],  'Low_gamma'; ...
-    [60 90],  'High_gamma'};
-n_bands = size(bands, 1);
-
-times = 0:0.05:0.5;
-n_t   = length(times);
-
-disp('--- loading freq data ---');
-load(fullfile(freq_data_dir, 'exp_go.mat'));   freq_exp_go   = freq; clear freq;
-load(fullfile(freq_data_dir, 'nov_go.mat'));   freq_nov_go   = freq; clear freq;
-load(fullfile(freq_data_dir, 'exp_nogo.mat')); freq_exp_nogo = freq; clear freq;
-load(fullfile(freq_data_dir, 'nov_nogo.mat')); freq_nov_nogo = freq; clear freq;
-
-% compute color limits for Go-NoGo row
-disp('--- computing color limits ---');
-mx_abs_dd = zeros(1, n_bands);
-for bi = 1:n_bands
-    for ti = 1:n_t
-        [~, ~, d_dd] = compute_diffs( ...
-            freq_exp_go, freq_nov_go, freq_exp_nogo, freq_nov_nogo, ...
-            bands{bi, 1}, times(ti));
-        mx_abs_dd(bi) = max(mx_abs_dd(bi), max(abs(d_dd.powspctrm(:))));
-    end
-end
-
-% layout constants (pixels)
-topo_sz  = 220;
-label_w  = 80;
-title_h  = 40;
-header_h = 34;
-cb_w     = 55;
-pad      = 8;
-
-fig_w_px = label_w + n_t * topo_sz + cb_w + pad;
-fig_h_px = title_h + header_h + 3 * topo_sz + pad;
-
-disp('--- creating figures ---');
-for bi = 1:n_bands
-    band_name = bands{bi, 2};
-    zlim_cond = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
-    zlim_dd   = [-mx_abs_dd(bi),        mx_abs_dd(bi)];
-
-    % load spatio-temporal stats for go and nogo
-    s_go   = load(fullfile(stat_data_dir, ['go_',   band_name, '.mat']));
-    s_nogo = load(fullfile(stat_data_dir, ['nogo_', band_name, '.mat']));
-
-    topo_imgs = cell(3, n_t);
-    for ti = 1:n_t
-        t    = times(ti);
-        t_ms = round(t * 1000);
-
-        [d_go, d_nogo, d_dd] = compute_diffs( ...
-            freq_exp_go, freq_nov_go, freq_exp_nogo, freq_nov_nogo, ...
-            bands{bi, 1}, t);
-
-        % extract mask at nearest time point
-        [~, t_idx_go]   = min(abs(s_go.stat.time   - t));
-        [~, t_idx_nogo] = min(abs(s_nogo.stat.time - t));
-        mask_go   = s_go.stat.mask(:,   t_idx_go);
-        mask_nogo = s_nogo.stat.mask(:, t_idx_nogo);
-
-        row_data  = {d_go,       d_nogo,      d_dd};
-        row_zlims = {zlim_cond,  zlim_cond,   zlim_dd};
-        row_masks = {mask_go,    mask_nogo,   logical([])};
-
-        for r = 1:3
             fig_tmp = figure('Visible', 'off', 'Units', 'pixels', ...
                 'Position', [0 0 topo_sz topo_sz]);
             cfg_t          = [];
             cfg_t.colorbar = 'no';
             cfg_t.layout   = 'easycapM11.mat';
             cfg_t.colormap = 'jet';
-            cfg_t.zlim     = row_zlims{r};
+            cfg_t.zlim     = zlim_diff;
             cfg_t.comment  = 'no';
             cfg_t.title    = ' ';
-            if any(row_masks{r}(:))
+            if any(mask_t)
                 cfg_t.highlight        = 'on';
-                cfg_t.highlightchannel = find(row_masks{r});
+                cfg_t.highlightchannel = find(mask_t);
                 cfg_t.highlightsymbol  = '*';
                 cfg_t.highlightcolor   = [0 0 0];
+                cfg_t.highlightsize    = 8;
             else
                 cfg_t.highlight = 'off';
             end
-            ft_topoplotTFR(cfg_t, row_data{r});
-            topo_imgs{r, ti} = print(fig_tmp, '-RGBImage');
+            ft_topoplotTFR(cfg_t, freq_diff);
+            topo_imgs{bi, ti} = print(fig_tmp, '-RGBImage');
             close(fig_tmp);
         end
+        fprintf('  [%s] band %d/%d done\n', cond, bi, n_bands);
     end
 
-    for r = 1:3
-        for ti = 1:n_t
-            topo_imgs{r, ti} = imresize(topo_imgs{r, ti}, [topo_sz, topo_sz]);
+    % resize all cells to exact topo_sz
+    for bi = 1:n_bands
+        for ti = 1:n_times
+            topo_imgs{bi, ti} = imresize(topo_imgs{bi, ti}, [topo_sz, topo_sz]);
         end
     end
 
-    fig = figure('Visible', 'off', 'Units', 'pixels', ...
-        'Position', [0, 0, fig_w_px, fig_h_px]);
+    % assemble composite figure (target: Frontiers full-page width)
+    fig = figure('Visible', 'off', 'Units', 'centimeters', ...
+        'Position', [0, 0, fig_w_cm, fig_h_cm]);
 
-    for r = 1:3
-        for c = 1:n_t
-            l = (label_w + (c-1)*topo_sz) / fig_w_px;
-            b = (pad      + (3-r)*topo_sz) / fig_h_px;
-            ax = axes('Position', [l, b, topo_sz/fig_w_px, topo_sz/fig_h_px]); %#ok<LAXES>
-            image(ax, topo_imgs{r, c});
+    for bi = 1:n_bands
+        for ti = 1:n_times
+            l  = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
+            b  = (pad_cm     + (n_bands - bi)*topo_cm) / fig_h_cm;
+            ax = axes('Position', [l, b, topo_cm/fig_w_cm, topo_cm/fig_h_cm]); %#ok<LAXES>
+            image(ax, topo_imgs{bi, ti});
+            axis(ax, 'image');
             axis(ax, 'off');
         end
     end
 
-    for c = 1:n_t
-        l = (label_w + (c-1)*topo_sz) / fig_w_px;
-        b = (pad + 3*topo_sz)          / fig_h_px;
-        annotation(fig, 'textbox', [l, b, topo_sz/fig_w_px, header_h/fig_h_px], ...
-            'String', sprintf('%d ms', round(times(c)*1000)), ...
+    % time labels (column header)
+    for ti = 1:n_times
+        l = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
+        b = (pad_cm + n_bands*topo_cm)     / fig_h_cm;
+        annotation(fig, 'textbox', [l, b, topo_cm/fig_w_cm, header_h_cm/fig_h_cm], ...
+            'String', sprintf('%d ms', round(times(ti)*1000)), ...
             'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-            'VerticalAlignment', 'middle', 'FontSize', 9);
+            'VerticalAlignment', 'middle', 'FontSize', 7);
     end
 
-    row_labels = {'Go', 'No-Go', 'Go - No-Go'};
-    for r = 1:3
-        b = (pad + (3-r)*topo_sz) / fig_h_px;
-        annotation(fig, 'textbox', [0, b, label_w/fig_w_px, topo_sz/fig_h_px], ...
-            'String', row_labels{r}, 'EdgeColor', 'none', 'Rotation', 90, ...
+    % band labels (row labels, rotated)
+    for bi = 1:n_bands
+        b = (pad_cm + (n_bands - bi)*topo_cm) / fig_h_cm;
+        annotation(fig, 'textbox', [0, b, label_w_cm/fig_w_cm, topo_cm/fig_h_cm], ...
+            'String', band_labels{bi}, ...
+            'EdgeColor', 'none', 'Rotation', 90, ...
             'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-            'FontSize', 11, 'FontWeight', 'bold');
+            'FontSize', 8, 'FontWeight', 'bold', 'Interpreter', 'tex');
     end
 
-    annotation(fig, 'textbox', ...
-        [label_w/fig_w_px, (pad+header_h+3*topo_sz)/fig_h_px, ...
-         n_t*topo_sz/fig_w_px, title_h/fig_h_px], ...
-        'String', sprintf('%s band: Power Diff (Exp - Nov)', band_name), ...
-        'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-        'VerticalAlignment', 'middle', 'FontSize', 13, 'FontWeight', 'bold');
-
-    cb_l     = (label_w + n_t*topo_sz + 4) / fig_w_px;
-    cb_w_n   = (cb_w - 8) / fig_w_px;
-    zlims_cb = {zlim_cond, zlim_cond, zlim_dd};
-    for r = 1:3
-        b_cb  = (pad + (3-r)*topo_sz) / fig_h_px;
-        h_cb  = topo_sz / fig_h_px;
+    % per-band colorbars on the right
+    cb_l   = (label_w_cm + n_times*topo_cm + 0.05) / fig_w_cm;
+    cb_w_n = (cb_w_cm - 0.15) / fig_w_cm;
+    for bi = 1:n_bands
+        zlim_diff = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
+        b_cb  = (pad_cm + (n_bands - bi)*topo_cm) / fig_h_cm;
+        h_cb  = topo_cm / fig_h_cm;
         ax_cb = axes('Position', [cb_l, b_cb, cb_w_n, h_cb], 'Visible', 'off'); %#ok<LAXES>
         colormap(ax_cb, jet(256));
-        clim(ax_cb, zlims_cb{r});
+        clim(ax_cb, zlim_diff);
         colorbar(ax_cb, 'Position', [cb_l, b_cb, cb_w_n, h_cb]);
     end
 
-    out_path = fullfile(res_dir, sprintf('%s.png', band_name));
-    exportgraphics(fig, out_path, 'Resolution', 150);
+    out_path = fullfile(res_dir, [cond, '_all_bands.svg']);
+    print(fig, '-dsvg', out_path);
     close(fig);
     fprintf('Saved: %s\n', out_path);
 end
 
 disp('Done.');
 
-% -----------------------------------------------------------------------
-% local functions
-% -----------------------------------------------------------------------
-
-function [d_go, d_nogo, d_dd] = compute_diffs( ...
-        freq_exp_go, freq_nov_go, freq_exp_nogo, freq_nov_nogo, band, t)
-    cfg_sel           = [];
-    cfg_sel.frequency = band;
-    cfg_sel.latency   = [t - 0.001, t + 0.001];
-
-    cfg_avg            = [];
-    cfg_avg.keeptrials = 'no';
-    avg_exp_go   = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp_go));
-    avg_nov_go   = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov_go));
-    avg_exp_nogo = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp_nogo));
-    avg_nov_nogo = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov_nogo));
-
-    cfg_m           = [];
-    cfg_m.operation = 'x1 - x2';
-    cfg_m.parameter = 'powspctrm';
-    d_go   = ft_math(cfg_m, avg_exp_go,   avg_nov_go);
-    d_nogo = ft_math(cfg_m, avg_exp_nogo, avg_nov_nogo);
-    d_dd   = ft_math(cfg_m, d_go,         d_nogo);
-end
