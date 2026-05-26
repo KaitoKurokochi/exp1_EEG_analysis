@@ -1,4 +1,4 @@
-prj_dir = 'C:\Users\kaito\workspace\2026_exp1\EEG_analysis_exp1';
+prj_dir = 'C:\Users\kaito\workspace\exp1_EEG_analysis';
 addpath("utils\");
 main_channels = {'Cz', 'Fz', 'Pz'};
 groups = {'nov', 'exp'};
