@@ -142,16 +142,19 @@ n_times = length(times);
 
 band_labels = {'Theta', 'Alpha', 'Beta', 'Low \gamma', 'High \gamma'};
 
-% layout constants (cm, target: Frontiers full-page width = 17.4 cm)
+% layout constants (cm)
 topo_sz     = 200;    % off-screen topo capture resolution (px)
-fig_w_cm    = 17.4;
-label_w_cm  = 1.5;
-cb_w_cm     = 1.0;
-pad_cm      = 0.10;
-header_h_cm = 0.50;
+label_w_cm  = 2.0;    % row-label column width
+topo_cm     = 2.2;    % width = height per topo cell
+band_gap_cm = 0.4;    % vertical gap between band rows
+header_h_cm = 0.8;    % column-header height
+pad_b_cm    = 0.25;   % bottom margin
+gap_cb_cm   = 0.2;    % horizontal gap between topos and colorbar
+cb_w_cm     = 0.6;    % colorbar column width
+pad_r_cm    = 1.0;    % right margin (prevents colorbar tick-label clipping)
 
-topo_cm  = (fig_w_cm - label_w_cm - cb_w_cm - pad_cm) / n_times;
-fig_h_cm = header_h_cm + n_bands * topo_cm + pad_cm;
+fig_w_cm = label_w_cm + n_times*topo_cm + gap_cb_cm + cb_w_cm + pad_r_cm;
+fig_h_cm = header_h_cm + n_bands*topo_cm + (n_bands-1)*band_gap_cm + pad_b_cm;
 
 disp('--- creating 5-band x 11-time overview figures ---');
 for ci = 1:length(conditions)
@@ -217,14 +220,14 @@ for ci = 1:length(conditions)
         end
     end
 
-    % assemble composite figure (target: Frontiers full-page width)
+    % assemble composite figure
     fig = figure('Visible', 'off', 'Units', 'centimeters', ...
         'Position', [0, 0, fig_w_cm, fig_h_cm]);
 
     for bi = 1:n_bands
         for ti = 1:n_times
             l  = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
-            b  = (pad_cm     + (n_bands - bi)*topo_cm) / fig_h_cm;
+            b  = (pad_b_cm + (n_bands - bi) * (topo_cm + band_gap_cm)) / fig_h_cm;
             ax = axes('Position', [l, b, topo_cm/fig_w_cm, topo_cm/fig_h_cm]); %#ok<LAXES>
             image(ax, topo_imgs{bi, ti});
             axis(ax, 'image');
@@ -233,31 +236,31 @@ for ci = 1:length(conditions)
     end
 
     % time labels (column header)
+    hdr_b = (pad_b_cm + n_bands*topo_cm + (n_bands-1)*band_gap_cm) / fig_h_cm;
     for ti = 1:n_times
         l = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
-        b = (pad_cm + n_bands*topo_cm)     / fig_h_cm;
-        annotation(fig, 'textbox', [l, b, topo_cm/fig_w_cm, header_h_cm/fig_h_cm], ...
+        annotation(fig, 'textbox', [l, hdr_b, topo_cm/fig_w_cm, header_h_cm/fig_h_cm], ...
             'String', sprintf('%d ms', round(times(ti)*1000)), ...
             'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-            'VerticalAlignment', 'middle', 'FontSize', 7);
+            'VerticalAlignment', 'middle', 'FontSize', 10);
     end
 
     % band labels (row labels, rotated)
     for bi = 1:n_bands
-        b = (pad_cm + (n_bands - bi)*topo_cm) / fig_h_cm;
+        b = (pad_b_cm + (n_bands - bi) * (topo_cm + band_gap_cm)) / fig_h_cm;
         annotation(fig, 'textbox', [0, b, label_w_cm/fig_w_cm, topo_cm/fig_h_cm], ...
             'String', band_labels{bi}, ...
             'EdgeColor', 'none', 'Rotation', 90, ...
             'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-            'FontSize', 8, 'FontWeight', 'bold', 'Interpreter', 'tex');
+            'FontSize', 11, 'FontWeight', 'bold', 'Interpreter', 'tex');
     end
 
     % per-band colorbars on the right
-    cb_l   = (label_w_cm + n_times*topo_cm + 0.05) / fig_w_cm;
-    cb_w_n = (cb_w_cm - 0.15) / fig_w_cm;
+    cb_l   = (label_w_cm + n_times*topo_cm + gap_cb_cm) / fig_w_cm;
+    cb_w_n = cb_w_cm / fig_w_cm;
     for bi = 1:n_bands
         zlim_diff = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
-        b_cb  = (pad_cm + (n_bands - bi)*topo_cm) / fig_h_cm;
+        b_cb  = (pad_b_cm + (n_bands - bi) * (topo_cm + band_gap_cm)) / fig_h_cm;
         h_cb  = topo_cm / fig_h_cm;
         ax_cb = axes('Position', [cb_l, b_cb, cb_w_n, h_cb], 'Visible', 'off'); %#ok<LAXES>
         colormap(ax_cb, jet(256));
