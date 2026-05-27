@@ -211,4 +211,5 @@ fprintf('Results saved to: %s\n', res_dir);
 % =========================================================================
 function s = formattable(T)
     s = evalc('disp(T)');
+    s = regexprep(s, '<[^>]+>', '');
 end
