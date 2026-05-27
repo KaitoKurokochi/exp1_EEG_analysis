@@ -1,19 +1,21 @@
 % stat_freq_cbpt_alpha.m
 % Spatio-temporal CBPT for alpha band only (7-13 Hz).
-% Saves stat results and an SVG topo overview (1 row x 11 time points).
+% Data source: result/freq_group_cond_alpha/ (alpha-limited wavelet output).
+% Saves stat results to result/stat_freq_cbpt_alpha/ and a composite SVG
+% (2 rows [Go / NoGo] x 11 time points) to result/fig_freq_alpha_topo/.
 
 %% statistics
 clear;
 config;
 
-data_dir = fullfile(prj_dir, 'result', 'freq_group_cond');
-res_dir  = fullfile(prj_dir, 'result', 'stat_freq_cbpt');
+data_dir = fullfile(prj_dir, 'result', 'freq_group_cond_alpha');
+res_dir  = fullfile(prj_dir, 'result', 'stat_freq_cbpt_alpha');
 if ~exist(res_dir, 'dir'), mkdir(res_dir); end
 
 load(fullfile(prj_dir, 'src', 'neighbours.mat'));
 
-band_freq  = [7 13];
-band_name  = 'alpha';
+band_freq = [7 13];
+band_name = 'alpha';
 
 for ci = 1:length(conditions)
     disp(['--- loading freq data: ', conditions{ci}, ' ---']);
@@ -52,145 +54,159 @@ for ci = 1:length(conditions)
     fprintf('saved: %s\n', fname);
 end
 
-%% figure - 1 row x 11 time points SVG per condition
+%% figure - one SVG per condition (3 rows: Exp | Nov | Diff, cols: time)
 clear;
 config;
 
-stat_data_dir = fullfile(prj_dir, 'result', 'stat_freq_cbpt');
-freq_data_dir = fullfile(prj_dir, 'result', 'freq_group_cond');
-res_dir       = fullfile(prj_dir, 'result', 'fig_freq_overview_topo');
+stat_data_dir = fullfile(prj_dir, 'result', 'stat_freq_cbpt_alpha');
+freq_data_dir = fullfile(prj_dir, 'result', 'freq_group_cond_alpha');
+res_dir       = fullfile(prj_dir, 'result', 'fig_freq_alpha_topo');
 if ~exist(res_dir, 'dir'), mkdir(res_dir); end
 
-band_freq = [7 13];
-band_name = 'alpha';
-
-times   = 0:0.05:0.5;
-n_times = length(times);
+band_freq  = [7 13];
+band_name  = 'alpha';
+times      = 0:0.05:0.5;
+n_times    = length(times);
+row_labels = {'Exp', 'Nov', 'Diff'};
+n_rows     = 3;
 
 % layout constants (cm)
-topo_sz    = 200;   % off-screen topo resolution (px)
-label_w_cm = 2.0;   % row-label column width
-topo_cm    = 2.2;   % width = height per topo cell
-header_h_cm = 0.8;  % column-header height
-pad_b_cm   = 0.25;  % bottom margin
-gap_cb_cm  = 0.2;   % gap between topos and colorbar
-cb_w_cm    = 0.6;   % colorbar column width
-pad_r_cm   = 1.0;   % right margin
+topo_sz     = 200;
+label_w_cm  = 2.0;   % left: row labels
+topo_cm     = 2.2;   % topo cell size
+header_h_cm = 0.8;   % top: time labels
+pad_b_cm    = 0.25;
+row_gap_cm  = 0.4;   % vertical gap between row groups (Exp/Nov and Diff)
+gap_cb_cm   = 0.2;   % gap between topos and colorbar
+cb_w_cm     = 0.6;   % colorbar width
+pad_r_cm    = 1.0;
+
+% row bottom edges from top: row 1 (Exp) top, row 3 (Diff) bottom
+% Exp and Nov are contiguous; small gap before Diff
+row_bottoms_cm = [ ...                        % bottom edge of each row in cm from figure bottom
+    pad_b_cm + 2*(topo_cm + row_gap_cm), ...  % row 1: Exp  (top)
+    pad_b_cm + 1*(topo_cm + row_gap_cm), ...  % row 2: Nov
+    pad_b_cm];                                 % row 3: Diff (bottom)
 
 fig_w_cm = label_w_cm + n_times*topo_cm + gap_cb_cm + cb_w_cm + pad_r_cm;
-fig_h_cm = header_h_cm + topo_cm + pad_b_cm;
+fig_h_cm = header_h_cm + n_rows*topo_cm + (n_rows-1)*row_gap_cm + pad_b_cm;
 
-disp('--- creating alpha 1-row x 11-time overview figures ---');
+% compute color limits across all conditions x times
+disp('--- computing color limits ---');
+mx_abs_grp  = 0;   % Exp and Nov shared scale
+mx_abs_diff = 0;   % Diff scale
 for ci = 1:length(conditions)
     cond = conditions{ci};
+    load(fullfile(freq_data_dir, ['exp_', cond, '.mat'])); freq_exp = freq; clear freq;
+    load(fullfile(freq_data_dir, ['nov_', cond, '.mat'])); freq_nov = freq; clear freq;
+    for ti = 1:n_times
+        t = times(ti);
+        cfg_sel = []; cfg_sel.frequency = band_freq; cfg_sel.latency = [t-0.001, t+0.001];
+        cfg_avg = []; cfg_avg.keeptrials = 'no';
+        avg_exp = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp));
+        avg_nov = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov));
+        mx_abs_grp = max(mx_abs_grp, max(abs(avg_exp.powspctrm(:))));
+        mx_abs_grp = max(mx_abs_grp, max(abs(avg_nov.powspctrm(:))));
+        cfg_math = []; cfg_math.operation = 'x1 - x2'; cfg_math.parameter = 'powspctrm';
+        d = ft_math(cfg_math, avg_exp, avg_nov);
+        mx_abs_diff = max(mx_abs_diff, max(abs(d.powspctrm(:))));
+    end
+end
+zlim_grp  = [-mx_abs_grp,  mx_abs_grp];
+zlim_diff = [-mx_abs_diff, mx_abs_diff];
+zlims_row = {zlim_grp, zlim_grp, zlim_diff};   % per row
+fprintf('zlim Exp/Nov: [%.4f, %.4f]\n', zlim_grp(1),  zlim_grp(2));
+fprintf('zlim Diff:    [%.4f, %.4f]\n', zlim_diff(1), zlim_diff(2));
 
+% one figure per condition
+for ci = 1:length(conditions)
+    cond = conditions{ci};
+    fprintf('--- [%s] rendering ---\n', cond);
     load(fullfile(freq_data_dir, ['exp_', cond, '.mat'])); freq_exp = freq; clear freq;
     load(fullfile(freq_data_dir, ['nov_', cond, '.mat'])); freq_nov = freq; clear freq;
     s = load(fullfile(stat_data_dir, [cond, '_', band_name, '.mat']));
 
-    % compute color limit from Exp and Nov data at all time points
-    mx_abs_diff = 0;
+    imgs = cell(n_rows, n_times);   % {Exp; Nov; Diff} x time
     for ti = 1:n_times
         t = times(ti);
-        cfg_sel           = [];
-        cfg_sel.frequency = band_freq;
-        cfg_sel.latency   = [t - 0.001, t + 0.001];
-        cfg_avg            = [];
-        cfg_avg.keeptrials = 'no';
-        avg_exp = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp));
-        avg_nov = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov));
-        cfg_math           = [];
-        cfg_math.operation = 'x1 - x2';
-        cfg_math.parameter = 'powspctrm';
-        d = ft_math(cfg_math, avg_exp, avg_nov);
-        mx_abs_diff = max(mx_abs_diff, max(abs(d.powspctrm(:))));
-    end
-    zlim_diff = [-mx_abs_diff, mx_abs_diff];
-
-    % render individual topos
-    topo_imgs = cell(1, n_times);
-    for ti = 1:n_times
-        t = times(ti);
-        cfg_sel           = [];
-        cfg_sel.frequency = band_freq;
-        cfg_sel.latency   = [t - 0.001, t + 0.001];
-        cfg_avg            = [];
-        cfg_avg.keeptrials = 'no';
+        cfg_sel = []; cfg_sel.frequency = band_freq; cfg_sel.latency = [t-0.001, t+0.001];
+        cfg_avg = []; cfg_avg.keeptrials = 'no';
         avg_exp  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp));
         avg_nov  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov));
-        cfg_math           = [];
-        cfg_math.operation = 'x1 - x2';
-        cfg_math.parameter = 'powspctrm';
-        freq_diff = ft_math(cfg_math, avg_exp, avg_nov);
+        cfg_math = []; cfg_math.operation = 'x1 - x2'; cfg_math.parameter = 'powspctrm';
+        avg_diff = ft_math(cfg_math, avg_exp, avg_nov);
 
         [~, t_idx] = min(abs(s.stat.time - t));
         mask_t = s.stat.mask(:, t_idx);
 
-        fig_tmp = figure('Visible', 'off', 'Units', 'pixels', ...
-            'Position', [0 0 topo_sz topo_sz]);
-        cfg_t          = [];
-        cfg_t.colorbar = 'no';
-        cfg_t.layout   = 'easycapM11.mat';
-        cfg_t.colormap = 'jet';
-        cfg_t.zlim     = zlim_diff;
-        cfg_t.comment  = 'no';
-        cfg_t.title    = ' ';
-        if any(mask_t)
-            cfg_t.highlight        = 'on';
-            cfg_t.highlightchannel = find(mask_t);
-            cfg_t.highlightsymbol  = '*';
-            cfg_t.highlightcolor   = [0 0 0];
-            cfg_t.highlightsize    = 8;
-        else
-            cfg_t.highlight = 'off';
+        data_list = {avg_exp, avg_nov, avg_diff};
+        for ri = 1:n_rows
+            fig_tmp = figure('Visible', 'off', 'Units', 'pixels', 'Position', [0 0 topo_sz topo_sz]);
+            cfg_t = []; cfg_t.colorbar = 'no'; cfg_t.layout = 'easycapM11.mat';
+            cfg_t.colormap = 'jet'; cfg_t.zlim = zlims_row{ri};
+            cfg_t.comment = 'no'; cfg_t.title = ' ';
+            if ri == 3 && any(mask_t)
+                cfg_t.highlight        = 'on';
+                cfg_t.highlightchannel = find(mask_t);
+                cfg_t.highlightsymbol  = '*';
+                cfg_t.highlightcolor   = [0 0 0];
+                cfg_t.highlightsize    = 10;
+            else
+                cfg_t.highlight = 'off';
+            end
+            ft_topoplotTFR(cfg_t, data_list{ri});
+            if ri == 3 && any(mask_t)
+                set(findobj(gca, 'Type', 'line', 'Marker', '*'), 'LineWidth', 2.0);
+            end
+            imgs{ri, ti} = imresize(print(fig_tmp, '-RGBImage'), [topo_sz, topo_sz]);
+            close(fig_tmp);
         end
-        ft_topoplotTFR(cfg_t, freq_diff);
-        topo_imgs{ti} = imresize(print(fig_tmp, '-RGBImage'), [topo_sz, topo_sz]);
-        close(fig_tmp);
     end
-    fprintf('  [%s] topos rendered\n', cond);
+    fprintf('  topos rendered\n');
 
-    % assemble composite figure
-    fig = figure('Visible', 'off', 'Units', 'centimeters', ...
-        'Position', [0, 0, fig_w_cm, fig_h_cm]);
+    % assemble figure
+    fig = figure('Visible', 'off', 'Units', 'centimeters', 'Position', [0, 0, fig_w_cm, fig_h_cm]);
 
-    for ti = 1:n_times
-        l  = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
-        b  = pad_b_cm / fig_h_cm;
-        ax = axes('Position', [l, b, topo_cm/fig_w_cm, topo_cm/fig_h_cm]); %#ok<LAXES>
-        image(ax, topo_imgs{ti});
-        axis(ax, 'image');
-        axis(ax, 'off');
+    for ri = 1:n_rows
+        row_b = row_bottoms_cm(ri) / fig_h_cm;
+        for ti = 1:n_times
+            col_l = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
+            ax = axes('Position', [col_l, row_b, topo_cm/fig_w_cm, topo_cm/fig_h_cm]); %#ok<LAXES>
+            image(ax, imgs{ri, ti}); axis(ax, 'image'); axis(ax, 'off');
+        end
     end
 
-    % time labels (column header)
-    hdr_b = (pad_b_cm + topo_cm) / fig_h_cm;
+    % time labels (top header)
+    hdr_b = (pad_b_cm + n_rows*topo_cm + (n_rows-1)*row_gap_cm) / fig_h_cm;
     for ti = 1:n_times
-        l = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
-        annotation(fig, 'textbox', [l, hdr_b, topo_cm/fig_w_cm, header_h_cm/fig_h_cm], ...
+        col_l = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
+        annotation(fig, 'textbox', [col_l, hdr_b, topo_cm/fig_w_cm, header_h_cm/fig_h_cm], ...
             'String', sprintf('%d ms', round(times(ti)*1000)), ...
             'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-            'VerticalAlignment', 'middle', 'FontSize', 10);
+            'VerticalAlignment', 'middle', 'FontSize', 14);
     end
 
-    % band label (row label, rotated)
-    annotation(fig, 'textbox', [0, pad_b_cm/fig_h_cm, label_w_cm/fig_w_cm, topo_cm/fig_h_cm], ...
-        'String', 'Alpha', ...
-        'EdgeColor', 'none', 'Rotation', 90, ...
-        'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-        'FontSize', 11, 'FontWeight', 'bold');
+    % row labels (left, horizontal, bold 14pt)
+    for ri = 1:n_rows
+        row_b = row_bottoms_cm(ri) / fig_h_cm;
+        annotation(fig, 'textbox', [0, row_b, label_w_cm/fig_w_cm, topo_cm/fig_h_cm], ...
+            'String', row_labels{ri}, ...
+            'EdgeColor', 'none', ...
+            'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
+            'FontSize', 14, 'FontWeight', 'bold');
+    end
 
-    % single colorbar on the right
-    cb_l   = (label_w_cm + n_times*topo_cm + gap_cb_cm) / fig_w_cm;
-    cb_w_n = cb_w_cm / fig_w_cm;
-    b_cb   = pad_b_cm / fig_h_cm;
-    h_cb   = topo_cm / fig_h_cm;
-    ax_cb  = axes('Position', [cb_l, b_cb, cb_w_n, h_cb], 'Visible', 'off'); %#ok<LAXES>
-    colormap(ax_cb, jet(256));
-    clim(ax_cb, zlim_diff);
-    colorbar(ax_cb, 'Position', [cb_l, b_cb, cb_w_n, h_cb]);
+    % colorbars (one per row, on the right, spanning full time width)
+    cb_l = (label_w_cm + n_times*topo_cm + gap_cb_cm) / fig_w_cm;
+    for ri = 1:n_rows
+        row_b = row_bottoms_cm(ri) / fig_h_cm;
+        ax_cb = axes('Position', [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm], 'Visible', 'off'); %#ok<LAXES>
+        colormap(ax_cb, jet(256)); clim(ax_cb, zlims_row{ri});
+        cb = colorbar(ax_cb, 'Position', [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm]);
+        cb.FontSize = 12;
+    end
 
-    out_path = fullfile(res_dir, [cond, '_alpha_topo.svg']);
+    out_path = fullfile(res_dir, [cond, '_alpha_3row_topo.svg']);
     print(fig, '-dsvg', out_path);
     close(fig);
     fprintf('Saved: %s\n', out_path);
