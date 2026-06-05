@@ -1,6 +1,7 @@
-% erp_to_freq_alpha: wavelet transform for alpha band (7-13Hz, 1Hz steps)
-% cfg.foi  : 7:1:13 Hz
-% cfg.width: logspace(log10(5.67), log10(7.78), 7) — mirrors original full-band scaling
+% erp_to_freq_alpha: wavelet transform for alpha band (7-13Hz, log-spaced, 5 points)
+% cfg.foi  : logspace(log10(7), log10(13), 5) → ~[7.0, 8.1, 9.3, 10.7, 13.0] Hz
+% cfg.width: power law from Minami & Amano (2017) [3-12 cycles for 3-40 Hz]
+%            width(f) = 3 * (f/3)^(log(12/3)/log(40/3)) ≈ 3 * (f/3)^0.535
 clear;
 config;
 
@@ -21,8 +22,8 @@ for gi = 1:length(groups)
         cfg.method      = 'wavelet';
         cfg.output      = 'pow';
         cfg.keeptrials  = 'yes';
-        cfg.foi         = 7:1:13;
-        cfg.width       = logspace(log10(5.67), log10(7.78), length(cfg.foi)); % review 
+        cfg.foi         = logspace(log10(7), log10(13), 5);
+        cfg.width       = 3 * (cfg.foi / 3) .^ (log(12/3) / log(40/3)); % Minami & Amano (2017): width(f) = 3*(f/3)^0.535
         cfg.toi         = round((data.time{1}(1) : 0.05 : data.time{1}(end)) * data.fsample) / data.fsample;
         freq = ft_freqanalysis(cfg, data);
 
