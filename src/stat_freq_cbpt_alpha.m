@@ -150,13 +150,13 @@ for ci = 1:length(conditions)
                 cfg_t.highlightchannel = find(mask_t);
                 cfg_t.highlightsymbol  = '*';
                 cfg_t.highlightcolor   = [0 0 0];
-                cfg_t.highlightsize    = 4;
+                cfg_t.highlightsize    = 8;
             else
                 cfg_t.highlight = 'off';
             end
             ft_topoplotTFR(cfg_t, data_list{ri});
             if ri == 3 && any(mask_t)
-                set(findobj(gca, 'Type', 'line', 'Marker', '*'), 'LineWidth', 0.5);
+                set(findobj(gca, 'Type', 'line', 'Marker', '*'), 'LineWidth', 1.5);
             end
             imgs{ri, ti} = imresize(print(fig_tmp, '-RGBImage'), [topo_sz, topo_sz]);
             close(fig_tmp);
@@ -202,7 +202,9 @@ for ci = 1:length(conditions)
         row_b = row_bottoms_cm(ri) / fig_h_cm;
         ax_cb = axes('Position', [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm], 'Visible', 'off'); %#ok<LAXES>
         colormap(ax_cb, jet(256)); clim(ax_cb, zlims_row{ri});
-        cb = colorbar(ax_cb, 'Position', [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm]);
+        cb = colorbar(ax_cb);
+        cb.Position = [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm];
+        cb.AxisLocation = 'out';
         cb.FontSize = 12;
     end
 
