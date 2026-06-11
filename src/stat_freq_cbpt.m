@@ -143,9 +143,9 @@ n_times = length(times);
 band_labels = {'Theta', 'Alpha', 'Beta', 'Low \gamma', 'High \gamma'};
 
 % layout constants (cm)
-topo_sz     = 200;    % off-screen topo capture resolution (px)
+topo_sz     = 260;    % off-screen topo capture resolution (px)
 label_w_cm  = 2.0;    % row-label column width
-topo_cm     = 2.2;    % width = height per topo cell
+topo_cm     = 2.8;    % width = height per topo cell
 band_gap_cm = 0.4;    % vertical gap between band rows
 header_h_cm = 0.8;    % column-header height
 pad_b_cm    = 0.25;   % bottom margin
@@ -202,7 +202,7 @@ for ci = 1:length(conditions)
                 cfg_t.highlightchannel = find(mask_t);
                 cfg_t.highlightsymbol  = '*';
                 cfg_t.highlightcolor   = [0 0 0];
-                cfg_t.highlightsize    = 8;
+                cfg_t.highlightsize    = 4;
             else
                 cfg_t.highlight = 'off';
             end

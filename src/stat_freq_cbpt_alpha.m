@@ -71,9 +71,9 @@ row_labels = {'Exp', 'Nov', 'Diff'};
 n_rows     = 3;
 
 % layout constants (cm)
-topo_sz     = 200;
+topo_sz     = 260;
 label_w_cm  = 2.0;   % left: row labels
-topo_cm     = 2.2;   % topo cell size
+topo_cm     = 2.8;   % topo cell size
 header_h_cm = 0.8;   % top: time labels
 pad_b_cm    = 0.25;
 row_gap_cm  = 0.4;   % vertical gap between row groups (Exp/Nov and Diff)
@@ -150,13 +150,13 @@ for ci = 1:length(conditions)
                 cfg_t.highlightchannel = find(mask_t);
                 cfg_t.highlightsymbol  = '*';
                 cfg_t.highlightcolor   = [0 0 0];
-                cfg_t.highlightsize    = 10;
+                cfg_t.highlightsize    = 4;
             else
                 cfg_t.highlight = 'off';
             end
             ft_topoplotTFR(cfg_t, data_list{ri});
             if ri == 3 && any(mask_t)
-                set(findobj(gca, 'Type', 'line', 'Marker', '*'), 'LineWidth', 2.0);
+                set(findobj(gca, 'Type', 'line', 'Marker', '*'), 'LineWidth', 0.5);
             end
             imgs{ri, ti} = imresize(print(fig_tmp, '-RGBImage'), [topo_sz, topo_sz]);
             close(fig_tmp);
