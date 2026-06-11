@@ -204,7 +204,6 @@ for ci = 1:length(conditions)
         colormap(ax_cb, jet(256)); clim(ax_cb, zlims_row{ri});
         cb = colorbar(ax_cb);
         cb.Position = [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm];
-        cb.AxisLocation = 'out';
         cb.FontSize = 12;
     end
 
