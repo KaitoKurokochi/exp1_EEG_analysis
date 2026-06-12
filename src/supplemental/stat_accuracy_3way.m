@@ -111,6 +111,40 @@ rm = fitrm(tbl, 'GoF-NoGoS ~ group', 'WithinDesign', within_design);
 stat.ranovatbl = ranova(rm, 'WithinModel', 'GoNoGo*Pitch');
 
 % -------------------------------------------------------------------------
+% partial eta-squared  (SumSq_effect / (SumSq_effect + SumSq_error))
+%   ranova row names (within effects only — between 'group' is in rm.Coefficients):
+%     '(Intercept):GoNoGo'       main effect GoNoGo     error: 'Error(GoNoGo)'
+%     'group:GoNoGo'             Group x GoNoGo         error: 'Error(GoNoGo)'
+%     '(Intercept):Pitch'        main effect Pitch      error: 'Error(Pitch)'
+%     'group:Pitch'              Group x Pitch          error: 'Error(Pitch)'
+%     '(Intercept):GoNoGo:Pitch' GoNoGo x Pitch         error: 'Error(GoNoGo:Pitch)'
+%     'group:GoNoGo:Pitch'       Group x GoNoGo x Pitch error: 'Error(GoNoGo:Pitch)'
+%   between effect (Group main) is read from rm.Coefficients via anova()
+% -------------------------------------------------------------------------
+ss_gng       = stat.ranovatbl{'(Intercept):GoNoGo',       'SumSq'};
+ss_grp_gng   = stat.ranovatbl{'group:GoNoGo',             'SumSq'};
+ss_pitch     = stat.ranovatbl{'(Intercept):Pitch',        'SumSq'};
+ss_grp_pitch = stat.ranovatbl{'group:Pitch',              'SumSq'};
+ss_gng_pitch = stat.ranovatbl{'(Intercept):GoNoGo:Pitch', 'SumSq'};
+ss_3way      = stat.ranovatbl{'group:GoNoGo:Pitch',       'SumSq'};
+ss_err_gng   = stat.ranovatbl{'Error(GoNoGo)',            'SumSq'};
+ss_err_pitch = stat.ranovatbl{'Error(Pitch)',             'SumSq'};
+ss_err_3way  = stat.ranovatbl{'Error(GoNoGo:Pitch)',      'SumSq'};
+
+% between effect (Group) — from anova() on the fitrm object
+btw_tbl = anova(rm);
+ss_group     = btw_tbl{'group', 'SumSq'};
+ss_err_btw   = btw_tbl{'Error', 'SumSq'};
+
+stat.petasq_group      = ss_group     / (ss_group     + ss_err_btw);
+stat.petasq_gng        = ss_gng       / (ss_gng       + ss_err_gng);
+stat.petasq_grp_gng    = ss_grp_gng   / (ss_grp_gng   + ss_err_gng);
+stat.petasq_pitch      = ss_pitch     / (ss_pitch     + ss_err_pitch);
+stat.petasq_grp_pitch  = ss_grp_pitch / (ss_grp_pitch + ss_err_pitch);
+stat.petasq_gng_pitch  = ss_gng_pitch / (ss_gng_pitch + ss_err_3way);
+stat.petasq_3way       = ss_3way      / (ss_3way      + ss_err_3way);
+
+% -------------------------------------------------------------------------
 % simple main effects of Pitch within each GoNoGo level
 %   paired t-test: GoF vs GoS  and  NoGoF vs NoGoS
 %   Bonferroni correction: alpha = 0.05/2 = 0.025
@@ -177,6 +211,15 @@ fprintf(fid, '\n\n');
 fprintf(fid, '--- ranova table ---\n');
 fprintf(fid, '%s\n\n', formattable(stat.ranovatbl));
 
+fprintf(fid, '--- partial eta-squared ---\n');
+fprintf(fid, '  Group (between):             partial eta2 = %.4f\n', stat.petasq_group);
+fprintf(fid, '  GoNoGo (within):             partial eta2 = %.4f\n', stat.petasq_gng);
+fprintf(fid, '  Group x GoNoGo:              partial eta2 = %.4f\n', stat.petasq_grp_gng);
+fprintf(fid, '  Pitch (within):              partial eta2 = %.4f\n', stat.petasq_pitch);
+fprintf(fid, '  Group x Pitch:               partial eta2 = %.4f\n', stat.petasq_grp_pitch);
+fprintf(fid, '  GoNoGo x Pitch:              partial eta2 = %.4f\n', stat.petasq_gng_pitch);
+fprintf(fid, '  Group x GoNoGo x Pitch:      partial eta2 = %.4f\n\n', stat.petasq_3way);
+
 fprintf(fid, '--- Simple main effect of Pitch [pooled across groups] (Bonferroni alpha=0.025) ---\n');
 fprintf(fid, 'Go   condition  (GoF vs GoS):    t(%d)=%.4f, p=%.4f, h=%d\n', ...
     stat.sme_Go.stats.df,   stat.sme_Go.stats.tstat,   stat.sme_Go.p,   stat.sme_Go.h);
@@ -200,6 +243,14 @@ fclose(fid);
 % -------------------------------------------------------------------------
 disp('=== 3-way mixed ANOVA: Accuracy ===');
 disp(stat.ranovatbl);
+fprintf('--- partial eta-squared ---\n');
+fprintf('  Group (between):             partial eta2 = %.4f\n', stat.petasq_group);
+fprintf('  GoNoGo (within):             partial eta2 = %.4f\n', stat.petasq_gng);
+fprintf('  Group x GoNoGo:              partial eta2 = %.4f\n', stat.petasq_grp_gng);
+fprintf('  Pitch (within):              partial eta2 = %.4f\n', stat.petasq_pitch);
+fprintf('  Group x Pitch:               partial eta2 = %.4f\n', stat.petasq_grp_pitch);
+fprintf('  GoNoGo x Pitch:              partial eta2 = %.4f\n', stat.petasq_gng_pitch);
+fprintf('  Group x GoNoGo x Pitch:      partial eta2 = %.4f\n', stat.petasq_3way);
 fprintf('Simple main effect Go   (GoF vs GoS):     t(%d)=%.4f, p=%.4f\n', ...
     stat.sme_Go.stats.df,   stat.sme_Go.stats.tstat,   stat.sme_Go.p);
 fprintf('Simple main effect NoGo (NoGoF vs NoGoS): t(%d)=%.4f, p=%.4f\n', ...

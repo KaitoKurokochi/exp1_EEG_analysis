@@ -98,4 +98,30 @@ stat.ranovatbl = ranova(rm, 'WithinModel', 'Condition');
 % multi compare
 stat.mc = multcompare(rm, 'group', 'By', 'Condition', 'ComparisonType', 'bonferroni');
 
+% -------------------------------------------------------------------------
+% partial eta-squared  (SumSq_effect / (SumSq_effect + SumSq_error))
+%   ranova row names:
+%     'group'              = Group main effect (between)      error: 'Error'
+%     '(Intercept):Condition'  = Condition main effect (within) error: 'Error(Condition)'
+%     'group:Condition'    = Group x Condition interaction    error: 'Error(Condition)'
+% -------------------------------------------------------------------------
+row_names = stat.ranovatbl.Properties.RowNames;
+
+ss_group     = stat.ranovatbl{'group',                   'SumSq'};
+ss_cond      = stat.ranovatbl{'(Intercept):Condition',   'SumSq'};
+ss_inter     = stat.ranovatbl{'group:Condition',         'SumSq'};
+ss_err_btw   = stat.ranovatbl{'Error',                   'SumSq'};
+ss_err_wthn  = stat.ranovatbl{'Error(Condition)',        'SumSq'};
+
+stat.petasq_group  = ss_group  / (ss_group  + ss_err_btw);
+stat.petasq_cond   = ss_cond   / (ss_cond   + ss_err_wthn);
+stat.petasq_inter  = ss_inter  / (ss_inter  + ss_err_wthn);
+
+fprintf('\n--- ranova result ---\n');
+disp(stat.ranovatbl);
+fprintf('--- partial eta-squared ---\n');
+fprintf('  Group (between):         partial eta2 = %.4f\n', stat.petasq_group);
+fprintf('  Condition (within):      partial eta2 = %.4f\n', stat.petasq_cond);
+fprintf('  Group x Condition:       partial eta2 = %.4f\n', stat.petasq_inter);
+
 save(fullfile(res_dir, 'stat.mat'), 'stat', '-v7.3');
