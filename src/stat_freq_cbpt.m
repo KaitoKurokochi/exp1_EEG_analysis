@@ -256,16 +256,20 @@ for ci = 1:length(conditions)
     end
 
     % per-band colorbars on the right
+    % ax_cb is placed slightly to the LEFT of the colorbar strip so that
+    % MATLAB renders the tick labels on the RIGHT side of the colorbar.
     cb_l   = (label_w_cm + n_times*topo_cm + gap_cb_cm) / fig_w_cm;
     cb_w_n = cb_w_cm / fig_w_cm;
+    offset_n = 0.001;   % small leftward offset in normalised units
     for bi = 1:n_bands
         zlim_diff = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
         b_cb  = (pad_b_cm + (n_bands - bi) * (topo_cm + band_gap_cm)) / fig_h_cm;
         h_cb  = topo_cm / fig_h_cm;
-        ax_cb = axes('Position', [cb_l, b_cb, cb_w_n, h_cb], 'Visible', 'off'); %#ok<LAXES>
+        ax_cb = axes('Position', [cb_l - offset_n, b_cb, cb_w_n, h_cb], 'Visible', 'off'); %#ok<LAXES>
         colormap(ax_cb, jet(256));
         clim(ax_cb, zlim_diff);
-        colorbar(ax_cb, 'Position', [cb_l, b_cb, cb_w_n, h_cb]);
+        cb = colorbar(ax_cb, 'Location', 'eastoutside');
+        cb.Position = [cb_l, b_cb, cb_w_n, h_cb];
     end
 
     out_path = fullfile(res_dir, [cond, '_all_bands.svg']);

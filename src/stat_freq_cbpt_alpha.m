@@ -197,12 +197,15 @@ for ci = 1:length(conditions)
     end
 
     % colorbars (one per row, on the right, spanning full time width)
+    % ax_cb is placed slightly to the LEFT of the colorbar strip so that
+    % MATLAB renders the tick labels on the RIGHT side of the colorbar.
     cb_l = (label_w_cm + n_times*topo_cm + gap_cb_cm) / fig_w_cm;
+    offset_n = 0.001;   % small leftward offset in normalised units
     for ri = 1:n_rows
         row_b = row_bottoms_cm(ri) / fig_h_cm;
-        ax_cb = axes('Position', [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm], 'Visible', 'off'); %#ok<LAXES>
+        ax_cb = axes('Position', [cb_l - offset_n, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm], 'Visible', 'off'); %#ok<LAXES>
         colormap(ax_cb, jet(256)); clim(ax_cb, zlims_row{ri});
-        cb = colorbar(ax_cb);
+        cb = colorbar(ax_cb, 'Location', 'eastoutside');
         cb.Position = [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm];
         cb.FontSize = 12;
     end
