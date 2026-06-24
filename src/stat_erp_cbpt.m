@@ -248,8 +248,10 @@ end
 
 
 %% figure - ERP per cluster (ERP waveform + topomap, SVG)
-% One SVG per significant cluster: left = ERP averaged over cluster channels,
-% right = topomap with cluster channels highlighted.
+% Go and NoGo conditions are saved as separate SVG files.
+% Layout: vertical stack — one row per cluster, each row contains
+%   left panel = ERP waveform, right panel = topomap.
+% Figure sizes: Go = 16x21 cm (3 rows), NoGo = 16x14 cm (2 rows).
 clear;
 config;
 
@@ -259,6 +261,12 @@ data_stat_dir    = fullfile(prj_dir, 'result', 'stat_erp_cbpt');
 data_rt_dir      = fullfile(prj_dir, 'result', 'stat_rt');
 res_fig_qua_dir  = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'qualified');
 alpha            = 0.05;
+
+% Single-row panel geometry (normalized, within one row slot)
+% Matches original single-figure layout: 16x7 cm
+erp_pos_in_slot  = [0.09, 0.15, 0.56, 0.76];  % [left, bot, w, h] within slot
+topo_pos_in_slot = [0.70, 0.18, 0.28, 0.64];
+row_margin       = 0.03;   % normalized gap between rows
 
 if ~exist(res_fig_qua_dir, 'dir'), mkdir(res_fig_qua_dir); end
 
@@ -270,16 +278,24 @@ load(fullfile(data_rt_dir, 'stat.mat'));
 mean_rt_exp = mean(stat.exp.m_rt);
 mean_rt_nov = mean(stat.nov.m_rt);
 
+% output file names per condition
+fig_fname = struct('go', 'go.svg', 'nogo', 'nogo.svg');
+
 for ci = 1:length(conditions)
+    cond = conditions{ci};   % 'go' or 'nogo'
+
     % grand average over full time range (all channels)
-    load(fullfile(data_erp_dir, ['exp_', conditions{ci}, '.mat']));
+    load(fullfile(data_erp_dir, ['exp_', cond, '.mat']));
     cfg_avg = []; cfg_avg.keeptrials = 'no';
     avg_exp_full = ft_timelockanalysis(cfg_avg, data); clear data;
 
-    load(fullfile(data_erp_dir, ['nov_', conditions{ci}, '.mat']));
+    load(fullfile(data_erp_dir, ['nov_', cond, '.mat']));
     avg_nov_full = ft_timelockanalysis(cfg_avg, data); clear data;
 
-    load(fullfile(data_stat_dir, [conditions{ci}, '.mat']));
+    load(fullfile(data_stat_dir, [cond, '.mat']));
+
+    % --- Pass 1: collect all qualified clusters in loop order ---
+    cluster_list = struct([]);
 
     for pol_i = 1:2
         if pol_i == 1, pol = 'pos'; clusters = stat.posclusters;
@@ -289,7 +305,7 @@ for ci = 1:length(conditions)
         for cli = 1:length(clusters)
             if clusters(cli).prob >= alpha, break; end
 
-            fpath = fullfile(data_cluster_dir, [conditions{ci}, '_', pol, '_', num2str(cli), '.mat']);
+            fpath = fullfile(data_cluster_dir, [cond, '_', pol, '_', num2str(cli), '.mat']);
             if ~exist(fpath, 'file'), continue; end
             load(fpath);   % loads 'data': data.erp_exp.label, data.mask
 
@@ -336,53 +352,90 @@ for ci = 1:length(conditions)
             topo_img = imresize(topo_img, [220 220]);
             close(fig_tmp);
 
-            % --- assemble combined figure ---
-            fig = figure('Visible', 'off', 'Units', 'centimeters', ...
-                'Position', [0, 0, 16, 7]);
-
-            % ERP panel (left)
-            ax_erp = axes('Position', [0.09, 0.15, 0.56, 0.76]); %#ok<LAXES>
-            hold on;
-
-            d = diff([false, sig_t(:)', false]);
-            ons  = find(d ==  1);
-            offs = find(d == -1) - 1;
-            for ri = 1:length(ons)
-                fill([t_stat(ons(ri)) t_stat(offs(ri)) t_stat(offs(ri)) t_stat(ons(ri))], ...
-                    [y_lo y_lo y_hi y_hi], col_sig, 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+            % store cluster data for Pass 2
+            entry.pol       = pol;
+            entry.cli       = cli;
+            entry.erp_e     = erp_e;
+            entry.erp_n     = erp_n;
+            entry.t_erp     = t_erp;
+            entry.sig_t     = sig_t;
+            entry.t_stat    = t_stat;
+            entry.y_lo      = y_lo;
+            entry.y_hi      = y_hi;
+            entry.topo_img  = topo_img;
+            if isempty(cluster_list)
+                cluster_list = entry;
+            else
+                cluster_list(end+1) = entry; %#ok<AGROW>
             end
-
-            xline(0, 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
-            yline(0, 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
-
-            h_e = plot(t_erp, erp_e, 'Color', col_exp, 'LineWidth', 1.5);
-            h_n = plot(t_erp, erp_n, 'Color', col_nov, 'LineWidth', 1.5);
-
-            if strcmp(conditions{ci}, 'go')
-                xline(mean_rt_exp, '--', 'Color', col_exp, 'LineWidth', 1.0, 'Alpha', 0.6);
-                xline(mean_rt_nov, '--', 'Color', col_nov, 'LineWidth', 1.0, 'Alpha', 0.6);
-            end
-
-            xlim([t_erp(1), t_erp(end)]);
-            ylim([y_lo, y_hi]);
-            xlabel('Time (s)', 'FontSize', 9);
-            ylabel('\muV',     'FontSize', 9);
-            legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-                'Location', 'southwest', 'FontSize', 8, 'Box', 'off');
-            set(ax_erp, 'FontSize', 9, 'TickDir', 'out', 'Box', 'off');
-
-            % Topomap panel (right, embedded raster) — square in 16x7 cm figure
-            ax_topo = axes('Position', [0.70, 0.18, 0.28, 0.64]); %#ok<LAXES>
-            image(ax_topo, topo_img);
-            axis(ax_topo, 'image');
-            axis(ax_topo, 'off');
-
-            fname = [conditions{ci}, '_', pol, '_', num2str(cli), '.svg'];
-            print(fig, '-dsvg', fullfile(res_fig_qua_dir, fname));
-            close(fig);
-            fprintf('Saved: %s\n', fname);
         end
     end
+
+    if isempty(cluster_list)
+        fprintf('No qualified clusters for condition: %s\n', cond);
+        continue;
+    end
+
+    % --- Pass 2: assemble stacked figure ---
+    n_rows    = length(cluster_list);
+    fig_h_cm  = 7 * n_rows;   % 7 cm per row
+    slot_h    = (1 - (n_rows - 1) * row_margin) / n_rows;   % normalized slot height
+
+    fig = figure('Visible', 'off', 'Units', 'centimeters', ...
+        'Position', [0, 0, 16, fig_h_cm]);
+
+    for ri = 1:n_rows
+        entry = cluster_list(ri);
+
+        % slot bottom in normalized figure coordinates (top row first)
+        slot_bot = (n_rows - ri) * (slot_h + row_margin);
+
+        % ERP panel position: map erp_pos_in_slot into this slot
+        erp_bot = slot_bot + erp_pos_in_slot(2) * slot_h;
+        erp_h   = erp_pos_in_slot(4) * slot_h;
+        ax_erp  = axes('Position', [erp_pos_in_slot(1), erp_bot, erp_pos_in_slot(3), erp_h]); %#ok<LAXES>
+        hold on;
+
+        d    = diff([false, entry.sig_t(:)', false]);
+        ons  = find(d ==  1);
+        offs = find(d == -1) - 1;
+        for rii = 1:length(ons)
+            fill([entry.t_stat(ons(rii)) entry.t_stat(offs(rii)) entry.t_stat(offs(rii)) entry.t_stat(ons(rii))], ...
+                [entry.y_lo entry.y_lo entry.y_hi entry.y_hi], col_sig, 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+        end
+
+        xline(0, 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
+        yline(0, 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
+
+        h_e = plot(entry.t_erp, entry.erp_e, 'Color', col_exp, 'LineWidth', 1.5);
+        h_n = plot(entry.t_erp, entry.erp_n, 'Color', col_nov, 'LineWidth', 1.5);
+
+        if strcmp(cond, 'go')
+            xline(mean_rt_exp, '--', 'Color', col_exp, 'LineWidth', 1.0, 'Alpha', 0.6);
+            xline(mean_rt_nov, '--', 'Color', col_nov, 'LineWidth', 1.0, 'Alpha', 0.6);
+        end
+
+        xlim([entry.t_erp(1), entry.t_erp(end)]);
+        ylim([entry.y_lo, entry.y_hi]);
+        xlabel('Time (s)', 'FontSize', 9);
+        ylabel('\muV',     'FontSize', 9);
+        legend([h_e, h_n], {'Experienced', 'Novice'}, ...
+            'Location', 'southwest', 'FontSize', 8, 'Box', 'off');
+        set(ax_erp, 'FontSize', 9, 'TickDir', 'out', 'Box', 'off');
+
+        % Topomap panel position: map topo_pos_in_slot into this slot
+        topo_bot = slot_bot + topo_pos_in_slot(2) * slot_h;
+        topo_h   = topo_pos_in_slot(4) * slot_h;
+        ax_topo  = axes('Position', [topo_pos_in_slot(1), topo_bot, topo_pos_in_slot(3), topo_h]); %#ok<LAXES>
+        image(ax_topo, entry.topo_img);
+        axis(ax_topo, 'image');
+        axis(ax_topo, 'off');
+    end
+
+    fname = fig_fname.(cond);
+    print(fig, '-dsvg', fullfile(res_fig_qua_dir, fname));
+    close(fig);
+    fprintf('Saved: %s  (%d rows)\n', fname, n_rows);
 end
 
 %% figure - skipped clusters (ERP waveform + topomap, PNG)

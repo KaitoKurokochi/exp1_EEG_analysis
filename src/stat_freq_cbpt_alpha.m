@@ -78,15 +78,15 @@ rows(6) = struct('cond', 'nogo', 'group', 'diff', 'label', '(f)');
 n_rows  = length(rows);
 
 % layout constants (cm)
-topo_sz     = 260;
-label_w_cm  = 2.0;   % left: row labels
-topo_cm     = 2.8;   % topo cell size
-header_h_cm = 0.8;   % top: time labels
-pad_b_cm    = 0.25;
-row_gap_cm  = 0.4;   % vertical gap between rows
-gap_cb_cm   = 0.2;   % gap between topos and colorbar
-cb_w_cm     = 0.6;   % colorbar width
-pad_r_cm    = 1.0;
+topo_sz     = 400;
+label_w_cm  = 1.2;   % left: row labels
+topo_cm     = 2.96;  % topo cell size (maximised)
+header_h_cm = 0.5;   % top: time labels
+pad_b_cm    = 0.1;
+row_gap_cm  = 0.05;  % vertical gap between rows
+gap_cb_cm   = 0.1;   % gap between topos and colorbar
+cb_w_cm     = 0.4;   % colorbar width
+pad_r_cm    = 0.8;
 
 % row bottom edges (cm from figure bottom), row 1 at top
 row_bottoms_cm = zeros(1, n_rows);
@@ -182,7 +182,7 @@ for ri = 1:n_rows
             cfg_t.highlightchannel = find(mask_t);
             cfg_t.highlightsymbol  = '*';
             cfg_t.highlightcolor   = [0 0 0];
-            cfg_t.highlightsize    = 8;
+            cfg_t.highlightsize    = 12;
         else
             cfg_t.highlight = 'off';
         end

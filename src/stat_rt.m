@@ -36,6 +36,21 @@ end
 stat = [];
 [stat.h, stat.p, stat.ci, stat.stats] = ttest2(exp.m_rt, nov.m_rt);
 
+% -------------------------------------------------------------------------
+% Cohen's d  (effect size for independent-samples t-test)
+%   d = (mean_exp - mean_nov) / pooled_SD
+%   pooled_SD = sqrt( ((n1-1)*var1 + (n2-1)*var2) / (n1+n2-2) )
+% -------------------------------------------------------------------------
+n1 = numel(exp.m_rt);
+n2 = numel(nov.m_rt);
+pooled_sd = sqrt( ((n1-1)*var(exp.m_rt) + (n2-1)*var(nov.m_rt)) / (n1+n2-2) );
+stat.cohens_d = (mean(exp.m_rt) - mean(nov.m_rt)) / pooled_sd;
+
+fprintf('\n--- t-test result (RT) ---\n');
+fprintf('  t(%d) = %.4f,  p = %.4f\n', stat.stats.df, stat.stats.tstat, stat.p);
+fprintf('--- effect size ---\n');
+fprintf('  Cohen''s d = %.4f\n', stat.cohens_d);
+
 % save data
 stat.exp = exp;
 stat.nov = nov;
