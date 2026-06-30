@@ -98,7 +98,7 @@ for ci = 1:length(conditions)
         time_idx = find(any(cluster_mask, 1));
         time_range = stat.time(time_idx);
 
-        % skip clusters outside 50ms duration
+        % skip clusters with no time points (edge case: missing from labelmat)
         if isempty(time_range)
             data = [];
             data.chan_names   = chan_names;
@@ -109,6 +109,7 @@ for ci = 1:length(conditions)
             continue
         end
         cluster_dur = time_range(end) - time_range(1);
+        % skip clusters shorter than 50 ms
         if cluster_dur < 0.05
             data = [];
             data.chan_names   = chan_names;
@@ -180,7 +181,7 @@ for ci = 1:length(conditions)
         time_idx = find(any(cluster_mask, 1));
         time_range = stat.time(time_idx);
 
-        % skip clusters outside 50ms duration
+        % skip clusters with no time points (edge case: missing from labelmat)
         if isempty(time_range)
             data = [];
             data.chan_names   = chan_names;
@@ -191,6 +192,7 @@ for ci = 1:length(conditions)
             continue
         end
         cluster_dur = time_range(end) - time_range(1);
+        % skip clusters shorter than 50 ms
         if cluster_dur < 0.05
             data = [];
             data.chan_names   = chan_names;
