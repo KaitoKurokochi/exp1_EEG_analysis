@@ -1,6 +1,12 @@
 % plot_electrode_map.m
 % Generates an SVG electrode diagram for exp1 EEG study.
 %
+% Rendering approach:
+%   ft_topoplotER (style='blank', marker='off') is used to draw the head
+%   outline (circle, nose, ears) based on the easycapM11 layout.
+%   Electrode circles and labels are then overlaid on the resulting axes
+%   using the layout coordinate system.
+%
 % Electrode configuration:
 %   - Active channels (n = 63): easycapM11 layout (10-20 extended system)
 %   - Reference electrode (CPz): re-referenced offline; shown in blue
@@ -17,84 +23,94 @@ clear; clc;
 prj_dir = 'C:\Users\kaito\workspace\exp1_EEG_analysis';
 
 % -------------------------------------------------------------------------
-% Load 2D layout
+% 1. Build extended layout: easycapM11 (63 ch) + CPz (ref) + AFz (gnd)
 % -------------------------------------------------------------------------
 cfg_layout        = [];
 cfg_layout.layout = 'easycapM11.mat';
 layout = ft_prepare_layout(cfg_layout);
 
-% Remove FieldTrip pseudo-channels (COMNT, SCALE)
-valid      = ~ismember(layout.label, {'COMNT', 'SCALE'});
-act_labels = layout.label(valid);
-act_pos    = layout.pos(valid, :);   % [n x 2], layout coordinate units
+% Separate active channels from FieldTrip pseudo-channels (COMNT, SCALE)
+is_pseudo  = ismember(layout.label, {'COMNT', 'SCALE'});
+act_labels = layout.label(~is_pseudo);
+act_pos    = layout.pos(~is_pseudo, :);   % [63 x 2] layout coordinate units
 
-% -------------------------------------------------------------------------
-% Compute positions for non-recording electrodes
-% -------------------------------------------------------------------------
 % CPz (analysis reference): midpoint of Cz and Pz along mid-sagittal plane
-idx_Cz  = strcmp(act_labels, 'Cz');
-idx_Pz  = strcmp(act_labels, 'Pz');
-cpz_pos = (act_pos(idx_Cz, :) + act_pos(idx_Pz, :)) / 2;
+cpz_pos = mean([act_pos(strcmp(act_labels, 'Cz'),  :); ...
+                act_pos(strcmp(act_labels, 'Pz'),  :)], 1);
 
 % AFz (ground): midpoint of Fz and Fpz along mid-sagittal plane
-idx_Fz   = strcmp(act_labels, 'Fz');
-idx_Fpz  = strcmp(act_labels, 'Fpz');
-afz_pos  = (act_pos(idx_Fz, :) + act_pos(idx_Fpz, :)) / 2;
+afz_pos = mean([act_pos(strcmp(act_labels, 'Fz'),  :); ...
+                act_pos(strcmp(act_labels, 'Fpz'), :)], 1);
 
-% Combine all electrode data
-all_labels = [act_labels;  {'CPz'};  {'AFz'}];
-all_pos    = [act_pos;      cpz_pos;  afz_pos];
-n_elec     = numel(all_labels);
+mean_w = mean(layout.width(~is_pseudo));
+mean_h = mean(layout.height(~is_pseudo));
 
-% -------------------------------------------------------------------------
-% Layout geometry
-% -------------------------------------------------------------------------
-% Electrode circle radius: fraction of the estimated inter-electrode spacing
-% Approximate median nearest-neighbour distance as the spacing estimate
-n_act = numel(act_labels);
-dist_mat = squareform(pdist(act_pos));
-dist_mat(dist_mat == 0) = Inf;
-min_dists = min(dist_mat, [], 2);
-elec_r = median(min_dists) * 0.38;   % 38% of median nearest-neighbour distance
+% Extended layout struct (FieldTrip requires COMNT/SCALE to remain present)
+ext_layout        = layout;
+ext_layout.label  = [act_labels; {'CPz'}; {'AFz'}; layout.label(is_pseudo)];
+ext_layout.pos    = [act_pos;     cpz_pos; afz_pos; layout.pos(is_pseudo,:)];
+ext_layout.width  = [layout.width(~is_pseudo);  mean_w; mean_w; layout.width(is_pseudo)];
+ext_layout.height = [layout.height(~is_pseudo); mean_h; mean_h; layout.height(is_pseudo)];
 
 % -------------------------------------------------------------------------
-% Figure setup
+% 2. Create fake timelock data (all channels, single time point, zeros)
+%    Required by ft_topoplotER even when style='blank'
+% -------------------------------------------------------------------------
+data_labels  = [act_labels; {'CPz'}; {'AFz'}];
+n_data_chans = numel(data_labels);
+
+fake_tl          = [];
+fake_tl.label    = data_labels;
+fake_tl.avg      = zeros(n_data_chans, 1);   % [n_chan x 1]
+fake_tl.time     = [0];                       % single time point at 0 ms
+fake_tl.dimord   = 'chan_time';
+
+% -------------------------------------------------------------------------
+% 3. Render head outline via ft_topoplotER
+%    style = 'blank' : no topographic color fill
+%    marker = 'off'  : suppress built-in electrode markers
+%    All electrode circles and labels are drawn manually in step 4.
 % -------------------------------------------------------------------------
 fig = figure('Visible', 'off', 'Units', 'centimeters', 'Position', [0 0 18 20]);
-ax  = axes('Position', [0.03 0.08 0.88 0.88]);
+
+cfg_topo            = [];
+cfg_topo.layout     = ext_layout;
+cfg_topo.xlim       = [0 0];      % select the single time point
+cfg_topo.style      = 'blank';
+cfg_topo.comment    = 'no';
+cfg_topo.colorbar   = 'no';
+cfg_topo.marker     = 'off';      % electrode markers drawn manually below
+
+ft_topoplotER(cfg_topo, fake_tl);
+
+% -------------------------------------------------------------------------
+% 4. Overlay electrode circles and labels on the ft_topoplotER axes
+% -------------------------------------------------------------------------
+ax = gca;
 hold(ax, 'on');
-axis(ax, 'equal');
-axis(ax, 'off');
 
-% -------------------------------------------------------------------------
-% Head outline (from FieldTrip layout: head circle, nose, ears)
-% -------------------------------------------------------------------------
-if isfield(layout, 'outline')
-    for oi = 1:numel(layout.outline)
-        xy = layout.outline{oi};
-        if ~isempty(xy)
-            plot(ax, xy(:,1), xy(:,2), 'k-', 'LineWidth', 1.5);
-        end
-    end
-end
-
-% -------------------------------------------------------------------------
-% Color definitions
-% -------------------------------------------------------------------------
-col_act_face  = [1.00, 1.00, 1.00];   % active channels: white fill
-col_act_edge  = [0.25, 0.25, 0.25];   % active channels: dark gray edge
-col_ref_face  = [0.10, 0.40, 0.80];   % reference (CPz): blue fill
-col_gnd_face  = [0.65, 0.65, 0.65];   % ground (AFz): gray fill
-col_act_text  = [0.00, 0.00, 0.00];   % active channels: black text
-col_ref_text  = [1.00, 1.00, 1.00];   % reference: white text
-col_gnd_text  = [0.10, 0.10, 0.10];   % ground: dark text
-
-font_sz   = 5;                         % pt
+% Electrode circle radius: 38% of median nearest-neighbour distance
+dist_mat  = squareform(pdist(act_pos));
+dist_mat(dist_mat == 0) = Inf;
+elec_r    = median(min(dist_mat, [], 2)) * 0.38;
 theta_cir = linspace(0, 2*pi, 60);
 
-% -------------------------------------------------------------------------
-% Draw electrodes
-% -------------------------------------------------------------------------
+% Color definitions
+col_act_face = [1.00, 1.00, 1.00];   % active: white fill
+col_act_edge = [0.25, 0.25, 0.25];   % active: dark gray edge
+col_ref_face = [0.10, 0.40, 0.80];   % reference CPz: blue fill
+col_gnd_face = [0.65, 0.65, 0.65];   % ground AFz: gray fill
+col_act_text = [0.00, 0.00, 0.00];   % active: black label
+col_ref_text = [1.00, 1.00, 1.00];   % reference: white label
+col_gnd_text = [0.10, 0.10, 0.10];   % ground: dark label
+
+font_sz = 5;   % pt
+
+% Combine all electrode positions for drawing
+all_labels = [act_labels; {'CPz'}; {'AFz'}];
+all_pos    = [act_pos;     cpz_pos; afz_pos];
+n_elec     = numel(all_labels);
+
 for i = 1:n_elec
     lbl = all_labels{i};
     cx  = all_pos(i, 1);
@@ -121,39 +137,44 @@ for i = 1:n_elec
 end
 
 % -------------------------------------------------------------------------
-% Legend
+% 5. Legend (horizontal row below the head outline)
+%    Each item: filled circle on the left + description text on the right
 % -------------------------------------------------------------------------
-% Position legend below the head outline
-x_lo = min(all_pos(:,1));
-x_hi = max(all_pos(:,1));
-y_lo = min(all_pos(:,2));
+% Extend y-axis downward to create space for the legend
+ax_xlim  = get(ax, 'XLim');
+ax_ylim  = get(ax, 'YLim');
+leg_gap  = elec_r * 4.0;               % gap between head bottom and legend
+leg_row_h = elec_r * 3.0;             % row height for the legend
+leg_y    = ax_ylim(1) - leg_gap;      % y-centre of legend row
 
-legend_y  = y_lo - 0.13;
-legend_xs = [x_lo + 0.05, x_lo + 0.40, x_lo + 0.75];
-legend_labels = {'Active channel (n = 63)', 'Reference (CPz)', 'Ground (AFz)'};
-legend_faces  = {col_act_face, col_ref_face, col_gnd_face};
-legend_texts  = {col_act_text, col_ref_text, col_gnd_text};
+ylim(ax, [leg_y - leg_row_h, ax_ylim(2)]);   % extend downward
+
+% Distribute three items evenly across x-axis
+x_lo   = ax_xlim(1);
+x_rng  = diff(ax_xlim);
+leg_xs = x_lo + x_rng * [0.08, 0.42, 0.72];   % left edges of each item
+
+legend_items = { ...
+    'Active channel (n = 63)', col_act_face, col_act_edge, col_act_text; ...
+    'Reference: CPz',          col_ref_face, col_act_edge, col_ref_text; ...
+    'Ground: AFz',             col_gnd_face, col_act_edge, col_gnd_text  ...
+};
 
 for li = 1:3
-    patch(ax, legend_xs(li) + elec_r * cos(theta_cir), legend_y + elec_r * sin(theta_cir), ...
-        legend_faces{li}, 'EdgeColor', col_act_edge, 'LineWidth', 0.5);
-    text(ax, legend_xs(li) + elec_r * 1.6, legend_y, legend_labels{li}, ...
-        'VerticalAlignment', 'middle', 'FontSize', 7, 'Color', [0 0 0], ...
-        'FontName', 'Arial');
+    face_c = legend_items{li, 2};
+    edge_c = legend_items{li, 3};
+    lx = leg_xs(li);
+    % Circle symbol
+    patch(ax, lx + elec_r*cos(theta_cir), leg_y + elec_r*sin(theta_cir), ...
+        face_c, 'EdgeColor', edge_c, 'LineWidth', 0.5);
+    % Description text to the right of the circle
+    text(ax, lx + elec_r * 1.5, leg_y, legend_items{li, 1}, ...
+        'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle', ...
+        'FontSize', 6.5, 'Color', [0 0 0], 'FontName', 'Arial');
 end
 
 % -------------------------------------------------------------------------
-% Axis limits
-% -------------------------------------------------------------------------
-x_margin = 0.10;
-y_margin_top = 0.12;
-y_margin_bot = 0.20;   % extra space for legend
-
-xlim(ax, [x_lo - x_margin,   x_hi + x_margin]);
-ylim(ax, [legend_y - y_margin_bot, max(all_pos(:,2)) + y_margin_top]);
-
-% -------------------------------------------------------------------------
-% Save as SVG
+% 6. Save as SVG
 % -------------------------------------------------------------------------
 out_dir  = fullfile(prj_dir, 'result', 'fig_electrode_map');
 if ~exist(out_dir, 'dir'), mkdir(out_dir); end
