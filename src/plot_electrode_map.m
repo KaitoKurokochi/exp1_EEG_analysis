@@ -121,7 +121,7 @@ col_act_text = [0.00, 0.00, 0.00];   % active channels: black label
 col_ref_text = [1.00, 1.00, 1.00];   % reference: white label
 col_gnd_text = [0.10, 0.10, 0.10];   % ground: dark label
 
-font_sz = 6.5;   % pt
+font_sz = 10;   % pt
 
 % Combine all electrodes: recording channels + reference + ground
 all_labels = [rec_labels;  {ref_label}; {gnd_label}];
