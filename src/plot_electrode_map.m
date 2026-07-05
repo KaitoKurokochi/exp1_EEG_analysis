@@ -148,41 +148,12 @@ for i = 1:numel(all_labels)
 
     text(ax, cx, cy, lbl, ...
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-        'FontSize', font_sz, 'Color', text_c, 'FontName', 'Arial', ...
-        'Interpreter', 'none');
+        'FontSize', font_sz, 'FontWeight', 'bold', 'Color', text_c, ...
+        'FontName', 'Arial', 'Interpreter', 'none');
 end
 
 % -------------------------------------------------------------------------
-% 7. Legend (horizontal row below the head outline)
-% -------------------------------------------------------------------------
-ax_xlim  = get(ax, 'XLim');
-ax_ylim  = get(ax, 'YLim');
-leg_gap  = elec_r * 4.0;
-leg_y    = ax_ylim(1) - leg_gap;
-
-ylim(ax, [leg_y - elec_r * 3.0, ax_ylim(2)]);
-
-x_lo  = ax_xlim(1);
-x_rng = diff(ax_xlim);
-leg_xs = x_lo + x_rng * [0.08, 0.42, 0.72];
-
-legend_items = { ...
-    'Active channel (n = 63)', col_act_face, col_act_edge, col_act_text; ...
-    'Reference: CPz',          col_ref_face, col_act_edge, col_ref_text; ...
-    'Ground: AFz',             col_gnd_face, col_act_edge, col_gnd_text  ...
-};
-
-for li = 1:3
-    lx = leg_xs(li);
-    patch(ax, lx + elec_r*cos(theta_cir), leg_y + elec_r*sin(theta_cir), ...
-        legend_items{li, 2}, 'EdgeColor', legend_items{li, 3}, 'LineWidth', 0.5);
-    text(ax, lx + elec_r * 1.5, leg_y, legend_items{li, 1}, ...
-        'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle', ...
-        'FontSize', 6.5, 'Color', [0 0 0], 'FontName', 'Arial');
-end
-
-% -------------------------------------------------------------------------
-% 8. Save as SVG
+% 7. Save as SVG
 % -------------------------------------------------------------------------
 out_dir  = fullfile(prj_dir, 'result', 'fig_electrode_map');
 if ~exist(out_dir, 'dir'), mkdir(out_dir); end
