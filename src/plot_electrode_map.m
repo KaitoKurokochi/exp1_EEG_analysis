@@ -115,7 +115,7 @@ theta_cir = linspace(0, 2*pi, 60);
 % Color definitions
 col_act_face = [1.00, 1.00, 1.00];   % active channels: white fill
 col_act_edge = [0.25, 0.25, 0.25];   % active channels: dark gray edge
-col_ref_face = [0.10, 0.40, 0.80];   % reference CPz: blue fill
+col_ref_face = [0.45, 0.70, 0.95];   % reference CPz: light blue fill
 col_gnd_face = [0.65, 0.65, 0.65];   % ground AFz: gray fill
 col_act_text = [0.00, 0.00, 0.00];   % active channels: black label
 col_ref_text = [1.00, 1.00, 1.00];   % reference: white label
@@ -146,7 +146,11 @@ for i = 1:numel(all_labels)
     patch(ax, cx + elec_r * cos(theta_cir), cy + elec_r * sin(theta_cir), ...
         face_c, 'EdgeColor', col_act_edge, 'LineWidth', 0.5);
 
-    text(ax, cx, cy, lbl, ...
+    % Display label: AFz is shown as 'GND' (cap marking), electrode ID unchanged
+    disp_lbl = lbl;
+    if strcmp(lbl, gnd_label), disp_lbl = 'GND'; end
+
+    text(ax, cx, cy, disp_lbl, ...
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
         'FontSize', font_sz, 'FontWeight', 'bold', 'Color', text_c, ...
         'FontName', 'Arial', 'Interpreter', 'none');
