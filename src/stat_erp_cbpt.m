@@ -421,9 +421,11 @@ for ci = 1:length(conditions)
         ylim([entry.y_lo, entry.y_hi]);
         xlabel('Time (s)', 'FontSize', 15);
         ylabel('\muV',     'FontSize', 15);
-        legend([h_e, h_n], {'Experienced', 'Novice'}, ...
+        lgd = legend([h_e, h_n], {'Experienced', 'Novice'}, ...
             'Location', 'southwest', 'FontSize', 12, 'Box', 'off');
+        lgd.Position(1) = lgd.Position(1) - 0.02;   % shift legend slightly left
         set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
+        ax_erp.YAxis.Exponent = 0;   % suppress y-axis exponent label to avoid clipping
 
         % Topomap panel position: map topo_pos_in_slot into this slot
         topo_bot = slot_bot + topo_pos_in_slot(2) * slot_h;
