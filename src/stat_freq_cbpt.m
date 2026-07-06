@@ -214,6 +214,9 @@ for ci = 1:length(conditions)
                 cfg_t.highlight = 'off';
             end
             ft_topoplotTFR(cfg_t, freq_diff);
+            if any(mask_t)
+                set(findobj(gca, 'Type', 'line', 'Marker', '*'), 'LineWidth', 1.0);
+            end
             topo_imgs{ri, ti} = imresize(print(fig_tmp, '-RGBImage'), [topo_sz, topo_sz]);
             close(fig_tmp);
         end
