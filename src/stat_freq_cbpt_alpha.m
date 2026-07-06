@@ -83,7 +83,7 @@ label_w_cm  = 1.2;   % left: row labels
 topo_cm     = 2.96;  % topo cell size (maximised)
 header_h_cm = 0.5;   % top: time labels
 pad_b_cm    = 0.1;
-row_gap_cm  = 0.05;  % vertical gap between rows
+row_gap_cm  = 0.20;  % vertical gap between rows
 gap_cb_cm   = 0.1;   % gap between topos and colorbar
 cb_w_cm     = 0.4;   % colorbar width
 pad_r_cm    = 0.8;
@@ -215,7 +215,7 @@ for ti = 1:n_times
     annotation(fig, 'textbox', [col_l, hdr_b, topo_cm/fig_w_cm, header_h_cm/fig_h_cm], ...
         'String', sprintf('%d ms', round(times(ti)*1000)), ...
         'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-        'VerticalAlignment', 'middle', 'FontSize', 14);
+        'VerticalAlignment', 'middle', 'FontSize', 18);
 end
 
 % row labels (left, horizontal, bold 14pt)
@@ -225,7 +225,7 @@ for ri = 1:n_rows
         'String', rows(ri).label, ...
         'EdgeColor', 'none', ...
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-        'FontSize', 14, 'FontWeight', 'bold');
+        'FontSize', 18, 'FontWeight', 'bold');
 end
 
 % colorbars (one per row, on the right)
@@ -239,7 +239,7 @@ for ri = 1:n_rows
     colormap(ax_cb, jet(256)); clim(ax_cb, zlims_row{ri});
     cb = colorbar(ax_cb, 'Location', 'eastoutside');
     cb.Position = [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm];
-    cb.FontSize = 12;
+    cb.FontSize = 18;
 end
 
 out_path = fullfile(res_dir, 'alpha_6row_topo.svg');
