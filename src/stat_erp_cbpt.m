@@ -419,11 +419,11 @@ for ci = 1:length(conditions)
 
         xlim([entry.t_erp(1), entry.t_erp(end)]);
         ylim([entry.y_lo, entry.y_hi]);
-        xlabel('Time (s)', 'FontSize', 9);
-        ylabel('\muV',     'FontSize', 9);
+        xlabel('Time (s)', 'FontSize', 18);
+        ylabel('\muV',     'FontSize', 18);
         legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-            'Location', 'southwest', 'FontSize', 8, 'Box', 'off');
-        set(ax_erp, 'FontSize', 9, 'TickDir', 'out', 'Box', 'off');
+            'Location', 'southwest', 'FontSize', 18, 'Box', 'off');
+        set(ax_erp, 'FontSize', 18, 'TickDir', 'out', 'Box', 'off');
 
         % Topomap panel position: map topo_pos_in_slot into this slot
         topo_bot = slot_bot + topo_pos_in_slot(2) * slot_h;
@@ -588,8 +588,8 @@ for ci = 1:length(conditions)
 
             xlim([t_erp(1), t_erp(end)]);
             ylim([y_lo, y_hi]);
-            xlabel('Time (s)', 'FontSize', 9);
-            ylabel('\muV',     'FontSize', 9);
+            xlabel('Time (s)', 'FontSize', 18);
+            ylabel('\muV',     'FontSize', 18);
 
             % build title
             title_str = sprintf('[SKIPPED] %s %s%d  p=%.4f', ...
@@ -597,8 +597,8 @@ for ci = 1:length(conditions)
             title(ax_erp, title_str, 'FontSize', 8, 'Interpreter', 'none');
 
             legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-                'Location', 'southwest', 'FontSize', 8, 'Box', 'off');
-            set(ax_erp, 'FontSize', 9, 'TickDir', 'out', 'Box', 'off');
+                'Location', 'southwest', 'FontSize', 18, 'Box', 'off');
+            set(ax_erp, 'FontSize', 18, 'TickDir', 'out', 'Box', 'off');
 
             % Topomap panel (right)
             ax_topo = axes('Position', [0.70, 0.18, 0.28, 0.64]); %#ok<LAXES>
