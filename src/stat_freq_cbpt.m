@@ -209,7 +209,7 @@ for ci = 1:length(conditions)
                 cfg_t.highlightchannel = find(mask_t);
                 cfg_t.highlightsymbol  = '*';
                 cfg_t.highlightcolor   = [0 0 0];
-                cfg_t.highlightsize    = 4;
+                cfg_t.highlightsize    = 12;
             else
                 cfg_t.highlight = 'off';
             end
