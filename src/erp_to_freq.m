@@ -20,7 +20,7 @@ for gi = 1:length(groups)
         cfg.output      = 'pow';
         cfg.keeptrials  = 'yes';
         cfg.foi         = logspace(log10(3),log10(90),30);
-        cfg.width       = logspace(log10(3),log10(30),30); % num of cycles
+        cfg.width       = 3 * (cfg.foi / 3) .^ (log(12/3) / log(40/3)); % Minami & Amano (2017): width(f)=3*(f/3)^0.535
         cfg.toi         = round((data.time{1}(1) : 0.05 : data.time{1}(end)) * data.fsample) / data.fsample;
         freq = ft_freqanalysis(cfg, data);
 
