@@ -317,8 +317,8 @@ for ci = 1:length(conditions)
             avg_exp_ch = ft_selectdata(cfg_sel, avg_exp_full);
             avg_nov_ch = ft_selectdata(cfg_sel, avg_nov_full);
 
-            erp_e = mean(avg_exp_ch.avg, 1) * 1e6;   % V → µV, mean over cluster chans
-            erp_n = mean(avg_nov_ch.avg, 1) * 1e6;
+            erp_e = mean(avg_exp_ch.avg, 1);   % already in µV (FieldTrip reads BrainVision in µV)
+            erp_n = mean(avg_nov_ch.avg, 1);
             t_erp = avg_exp_ch.time;
 
             % significance shading: any cluster channel significant at each stat time
@@ -425,7 +425,6 @@ for ci = 1:length(conditions)
             'Location', 'southwest', 'FontSize', 12, 'Box', 'off');
         lgd.Position(1) = lgd.Position(1) - 0.02;   % shift legend slightly left
         set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
-        ax_erp.YAxis.Exponent = 0;   % suppress y-axis exponent label to avoid clipping
 
         % Topomap panel position: map topo_pos_in_slot into this slot
         topo_bot = slot_bot + topo_pos_in_slot(2) * slot_h;
@@ -511,8 +510,8 @@ for ci = 1:length(conditions)
                 avg_nov_ch = ft_selectdata(cfg_sel, avg_nov_full);
             end
 
-            erp_e = mean(avg_exp_ch.avg, 1) * 1e6;   % V → µV
-            erp_n = mean(avg_nov_ch.avg, 1) * 1e6;
+            erp_e = mean(avg_exp_ch.avg, 1);   % already in µV
+            erp_n = mean(avg_nov_ch.avg, 1);
             t_erp = avg_exp_ch.time;
 
             % significance shading from stat (all channels in cluster)
