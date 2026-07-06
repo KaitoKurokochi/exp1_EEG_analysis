@@ -267,7 +267,7 @@ alpha            = 0.05;
 % Single-row panel geometry (normalized, within one row slot)
 % Matches original single-figure layout: 16x7 cm
 erp_pos_in_slot  = [0.09, 0.15, 0.56, 0.76];  % [left, bot, w, h] within slot
-topo_pos_in_slot = [0.70, 0.18, 0.28, 0.64];
+topo_pos_in_slot = [0.66, 0.18, 0.32, 0.70];
 row_margin       = 0.03;   % normalized gap between rows
 
 if ~exist(res_fig_qua_dir, 'dir'), mkdir(res_fig_qua_dir); end
