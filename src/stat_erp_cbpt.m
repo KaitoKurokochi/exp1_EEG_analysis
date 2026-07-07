@@ -269,6 +269,7 @@ alpha            = 0.05;
 erp_pos_in_slot  = [0.09, 0.15, 0.56, 0.76];  % [left, bot, w, h] within slot
 topo_pos_in_slot = [0.66, 0.18, 0.32, 0.70];
 row_margin       = 0.03;   % normalized gap between rows
+pad_bot          = 0.02;   % normalized bottom margin for xlabel clearance
 
 if ~exist(res_fig_qua_dir, 'dir'), mkdir(res_fig_qua_dir); end
 
@@ -381,7 +382,7 @@ for ci = 1:length(conditions)
     % --- Pass 2: assemble stacked figure ---
     n_rows    = length(cluster_list);
     fig_h_cm  = 7 * n_rows;   % 7 cm per row
-    slot_h    = (1 - (n_rows - 1) * row_margin) / n_rows;   % normalized slot height
+    slot_h    = (1 - pad_bot - (n_rows - 1) * row_margin) / n_rows;   % normalized slot height
 
     fig = figure('Visible', 'off', 'Units', 'centimeters', ...
         'Position', [0, 0, 16, fig_h_cm]);
@@ -390,7 +391,7 @@ for ci = 1:length(conditions)
         entry = cluster_list(ri);
 
         % slot bottom in normalized figure coordinates (top row first)
-        slot_bot = (n_rows - ri) * (slot_h + row_margin);
+        slot_bot = pad_bot + (n_rows - ri) * (slot_h + row_margin);
 
         % ERP panel position: map erp_pos_in_slot into this slot
         erp_bot = slot_bot + erp_pos_in_slot(2) * slot_h;
