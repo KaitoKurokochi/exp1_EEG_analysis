@@ -248,3 +248,59 @@ close(fig);
 fprintf('Saved: %s\n', out_path);
 
 disp('Done.');
+
+%% save individual topomap images
+% Saves each row x time topomap as a separate PNG (white borders cropped)
+% and colorbars (grp scale / diff scale) to result/fig_freq_alpha_topo/individual/.
+
+disp('--- saving individual topomap images ---');
+
+ind_dir = fullfile(res_dir, 'individual');
+if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
+
+% filename prefix per row: '{cond}_{group}'
+row_names = arrayfun(@(r) sprintf('%s_%s', r.cond, r.group), rows, 'UniformOutput', false);
+
+for ri = 1:n_rows
+    for ti = 1:n_times
+        img = imgs{ri, ti};
+
+        % crop leading/trailing rows and columns that are entirely white
+        gray         = double(mean(img, 3));
+        rows_content = find(~all(gray > 250, 2));
+        cols_content = find(~all(gray > 250, 1));
+        if ~isempty(rows_content) && ~isempty(cols_content)
+            img_crop = img(rows_content(1):rows_content(end), ...
+                           cols_content(1):cols_content(end), :);
+        else
+            img_crop = img;
+        end
+
+        t_ms      = round(times(ti) * 1000);
+        fname_img = fullfile(ind_dir, sprintf('%s_%03dms.png', row_names{ri}, t_ms));
+        imwrite(img_crop, fname_img);
+    end
+    fprintf('  row %d (%s) saved\n', ri, row_names{ri});
+end
+
+% save colorbars: grp scale (exp/nov rows) and diff scale (diff rows)
+cb_tags  = {'grp',    'diff'};
+zlims_cb = {zlim_grp, zlim_diff};
+for k = 1:2
+    fig_cb = figure('Visible', 'off', 'Units', 'pixels', 'Position', [0 0 100 topo_sz]);
+    ax_tmp = axes('Position', [0.05 0.05 0.01 0.9]);
+    Z      = linspace(zlims_cb{k}(1), zlims_cb{k}(2), 256)';
+    imagesc(ax_tmp, Z);
+    colormap(ax_tmp, jet(256));
+    clim(ax_tmp, zlims_cb{k});
+    set(ax_tmp, 'Visible', 'off');
+    cb2          = colorbar(ax_tmp, 'Location', 'eastoutside');
+    cb2.FontSize = 18;
+    cb2.Position = [0.30 0.05 0.45 0.90];
+    fname_cb = fullfile(ind_dir, sprintf('colorbar_%s.png', cb_tags{k}));
+    print(fig_cb, '-dpng', '-r150', fname_cb);
+    close(fig_cb);
+    fprintf('  saved colorbar: %s\n', cb_tags{k});
+end
+
+fprintf('Saved %d individual topomap images + 2 colorbars to:\n  %s\n', n_rows * n_times, ind_dir);
