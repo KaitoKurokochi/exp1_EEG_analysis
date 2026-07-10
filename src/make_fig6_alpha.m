@@ -20,13 +20,14 @@ times     = 0:0.05:0.5;
 n_times   = length(times);
 
 % 6-row definition
-rows(1) = struct('cond', 'go',   'group', 'exp',  'label', '(a)');
-rows(2) = struct('cond', 'go',   'group', 'nov',  'label', '(b)');
-rows(3) = struct('cond', 'go',   'group', 'diff', 'label', '(c)');
-rows(4) = struct('cond', 'nogo', 'group', 'exp',  'label', '(d)');
-rows(5) = struct('cond', 'nogo', 'group', 'nov',  'label', '(e)');
-rows(6) = struct('cond', 'nogo', 'group', 'diff', 'label', '(f)');
-n_rows  = length(rows);
+% Note: variable is named row_cfg (not rows) to avoid clash with MATLAB R2021a+ built-in rows().
+row_cfg(1) = struct('cond', 'go',   'group', 'exp',  'label', '(a)');
+row_cfg(2) = struct('cond', 'go',   'group', 'nov',  'label', '(b)');
+row_cfg(3) = struct('cond', 'go',   'group', 'diff', 'label', '(c)');
+row_cfg(4) = struct('cond', 'nogo', 'group', 'exp',  'label', '(d)');
+row_cfg(5) = struct('cond', 'nogo', 'group', 'nov',  'label', '(e)');
+row_cfg(6) = struct('cond', 'nogo', 'group', 'diff', 'label', '(f)');
+n_rows     = length(row_cfg);
 
 % layout constants (cm)
 topo_sz     = 400;
@@ -76,7 +77,7 @@ fprintf('zlim Diff:    [%.4f, %.4f]\n', zlim_diff(1), zlim_diff(2));
 
 zlims_row = cell(1, n_rows);
 for ri = 1:n_rows
-    if strcmp(rows(ri).group, 'diff')
+    if strcmp(row_cfg(ri).group, 'diff')
         zlims_row{ri} = zlim_diff;
     else
         zlims_row{ri} = zlim_grp;
@@ -99,8 +100,8 @@ disp('--- rendering 6-row figure ---');
 imgs = cell(n_rows, n_times);
 
 for ri = 1:n_rows
-    cond  = rows(ri).cond;
-    group = rows(ri).group;
+    cond  = row_cfg(ri).cond;
+    group = row_cfg(ri).group;
     freq_exp = freq_data.(cond).exp;
     freq_nov = freq_data.(cond).nov;
     s        = stat_data.(cond);
@@ -172,7 +173,7 @@ end
 for ri = 1:n_rows
     row_b = row_bottoms_cm(ri) / fig_h_cm;
     annotation(fig, 'textbox', [0, row_b, label_w_cm/fig_w_cm, topo_cm/fig_h_cm], ...
-        'String', rows(ri).label, ...
+        'String', row_cfg(ri).label, ...
         'EdgeColor', 'none', ...
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
         'FontSize', 18, 'FontWeight', 'bold');
