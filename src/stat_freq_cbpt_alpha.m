@@ -450,11 +450,10 @@ for k = 1:2
     cb2          = colorbar(ax_tmp, 'Location', 'eastoutside');
     cb2.Position = [cb_x, cb_y, cb_wn, cb_hn];
     cb2.FontSize = 18;
-    if strcmp(cb_tags{k}, 'diff')   % diff scale: show only min, 0, max (3 ticks)
-        cb2.Ticks = [zlims_cb{k}(1), 0, zlims_cb{k}(2)];
-        % Format tick labels to 1 decimal place to avoid raw floating-point clutter
-        cb2.TickLabels = {sprintf('%.1f', zlims_cb{k}(1)), '0', sprintf('%.1f', zlims_cb{k}(2))};
-    end
+    % Both grp and diff scales: show only min, 0, max (3 ticks)
+    cb2.Ticks = [zlims_cb{k}(1), 0, zlims_cb{k}(2)];
+    % Format tick labels to 1 decimal place to avoid raw floating-point clutter
+    cb2.TickLabels = {sprintf('%.1f', zlims_cb{k}(1)), '0', sprintf('%.1f', zlims_cb{k}(2))};
     drawnow;
     fname_cb = fullfile(ind_dir, sprintf('colorbar_%s.png', cb_tags{k}));
     print(fig_cb, '-dpng', '-r150', fname_cb);
