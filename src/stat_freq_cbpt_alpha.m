@@ -424,19 +424,29 @@ for ri = 1:n_rows
 end
 
 % save colorbars: grp scale (exp/nov rows) and diff scale (diff rows)
-cb_tags  = {'grp',    'diff'};
-zlims_cb = {zlim_grp, zlim_diff};
+% Use centimetre units matching section 2 (topo_cm=2.96, cb_w_cm=0.40) so
+% that FontSize 18 is visually identical to the section-2 composite figure.
+% No imagesc: CLim + colormap on an empty invisible axes is sufficient, and
+% avoids the extra rendered strip that imagesc produces when Visible is off.
+cb_tags    = {'grp',    'diff'};
+zlims_cb   = {zlim_grp, zlim_diff};
+topo_cm_s2 = 2.96;   % must match section 2's topo_cm
+cb_w_cm_s2 = 0.40;   % must match section 2's cb_w_cm
+tick_cm    = 1.20;   % space for tick labels to the right of the bar
+pad_l_cm   = 0.20;   % left padding
+fig_cb_w   = pad_l_cm + cb_w_cm_s2 + tick_cm;
+fig_cb_h   = topo_cm_s2;
+cb_x  = pad_l_cm   / fig_cb_w;
+cb_wn = cb_w_cm_s2 / fig_cb_w;
 for k = 1:2
-    fig_cb = figure('Visible', 'off', 'Units', 'pixels', 'Position', [0 0 100 topo_sz]);
-    ax_tmp = axes('Position', [0.05 0.05 0.01 0.9]);
-    Z      = linspace(zlims_cb{k}(1), zlims_cb{k}(2), 256)';
-    imagesc(ax_tmp, Z);
+    fig_cb = figure('Visible', 'off', 'Units', 'centimeters', ...
+                    'Position', [0, 0, fig_cb_w, fig_cb_h]);
+    ax_tmp = axes('Position', [cb_x - 0.001, 0.0, cb_wn, 1.0], 'Visible', 'off'); %#ok<LAXES>
     colormap(ax_tmp, jet(256));
-    clim(ax_tmp, zlims_cb{k});
-    set(ax_tmp, 'Visible', 'off');
+    set(ax_tmp, 'CLim', zlims_cb{k}, 'CLimMode', 'manual');
     cb2          = colorbar(ax_tmp, 'Location', 'eastoutside');
+    cb2.Position = [cb_x, 0.0, cb_wn, 1.0];
     cb2.FontSize = 18;
-    cb2.Position = [0.30 0.05 0.45 0.90];
     fname_cb = fullfile(ind_dir, sprintf('colorbar_%s.png', cb_tags{k}));
     print(fig_cb, '-dpng', '-r150', fname_cb);
     close(fig_cb);
