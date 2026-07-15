@@ -25,15 +25,15 @@
     // ---- choose condition --------------------------------------------------
     var isGo = confirm(
         "Which condition?\n\n" +
-        "OK     = Go    (3 rows: go_pos_1, go_pos_2, go_neg_1)\n" +
-        "Cancel = No-Go (2 rows: nogo_pos_1, nogo_neg_1)"
+        "OK     = Go    (3 rows: go_pos_2, go_pos_3, go_neg_1)\n" +
+        "Cancel = No-Go (2 rows: nogo_pos_2, nogo_neg_2)"
     );
 
     var ROWS;
     if (isGo) {
-        ROWS = ["go_pos_1", "go_pos_2", "go_neg_1"];
+        ROWS = ["go_pos_2", "go_pos_3", "go_neg_1"];
     } else {
-        ROWS = ["nogo_pos_1", "nogo_neg_1"];
+        ROWS = ["nogo_pos_2", "nogo_neg_2"];
     }
 
     var folder = Folder.selectDialog(
