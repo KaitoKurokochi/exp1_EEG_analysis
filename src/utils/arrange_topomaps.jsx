@@ -73,7 +73,10 @@
             var scaleY = (TOPO / item.height) * 100;
             item.resize(scaleX, scaleY);   // resize before setting position
             item.position = [x, y];        // [left edge, top edge]
-            item.embed();   // embed to prevent colour reinterpretation
+            // Note: embed() is intentionally omitted.
+            // Colours are preserved correctly when the document is in RGB mode
+            // (File > Document Color Mode > RGB Color) and colour management
+            // policies are set to Off (Edit > Color Settings > RGB: Off).
 
             placed_count++;
         }
