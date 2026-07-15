@@ -96,6 +96,10 @@ for ci = 1:length(conditions)
     stat_data.(cond) = load(fullfile(stat_data_dir, [cond, '_', band_name, '.mat']));
 end
 
+ind_dir   = fullfile(res_dir, 'individual');
+if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
+row_names = arrayfun(@(r) sprintf('%s_%s', r.cond, r.group), row_cfg, 'UniformOutput', false);
+
 disp('--- rendering 6-row figure ---');
 imgs = cell(n_rows, n_times);
 
@@ -141,6 +145,10 @@ for ri = 1:n_rows
         if strcmp(group, 'diff') && any(mask_t)
             set(findobj(gca, 'Type', 'line', 'Marker', '*'), 'LineWidth', 1.0);
         end
+        % Save individual topomap as vector PDF before rasterising for the composite
+        t_ms      = round(t * 1000);
+        fname_pdf = fullfile(ind_dir, sprintf('%s_%03dms.pdf', row_names{ri}, t_ms));
+        exportgraphics(fig_tmp, fname_pdf, 'ContentType', 'vector');
         imgs{ri, ti} = imresize(print(fig_tmp, '-RGBImage'), [topo_sz, topo_sz]);
         close(fig_tmp);
     end
@@ -207,4 +215,38 @@ copyfile(out_pdf, dest_pdf);
 fprintf('Copied PDF to: %s\n', dest_pdf);
 
 close(fig);
+
+% save colorbars as PDF (vector), sized to match the composite figure's colorbar
+disp('--- saving colorbar PDFs ---');
+cb_tags_v   = {'grp',    'diff'};
+zlims_cb_v  = {zlim_grp, zlim_diff};
+cb_tick_cm  = 1.00;   % space for tick labels to the right of the bar
+cb_pad_l_cm = 0.20;   % left padding
+cb_pad_r_cm = 0.20;   % right padding (prevent label clipping)
+cb_pad_v_cm = 0.30;   % top/bottom padding
+fig_cb_w    = cb_pad_l_cm + cb_w_cm + cb_tick_cm + cb_pad_r_cm;
+fig_cb_h    = topo_cm + 2*cb_pad_v_cm;
+cb_xn       = cb_pad_l_cm / fig_cb_w;
+cb_wn       = cb_w_cm     / fig_cb_w;
+cb_yn       = cb_pad_v_cm / fig_cb_h;
+cb_hn       = topo_cm     / fig_cb_h;
+for k = 1:2
+    fig_cb = figure('Visible', 'off', 'Units', 'centimeters', ...
+                    'Position', [0, 0, fig_cb_w, fig_cb_h]);
+    ax_tmp = axes('Position', [cb_xn - 0.001, cb_yn, cb_wn, cb_hn], 'Visible', 'off'); %#ok<LAXES>
+    colormap(ax_tmp, jet(256));
+    set(ax_tmp, 'CLim', zlims_cb_v{k}, 'CLimMode', 'manual');
+    cb2          = colorbar(ax_tmp, 'Location', 'eastoutside');
+    cb2.Position = [cb_xn, cb_yn, cb_wn, cb_hn];
+    cb2.FontSize = 18;
+    cb2.Ticks      = [zlims_cb_v{k}(1), 0, zlims_cb_v{k}(2)];
+    cb2.TickLabels = {sprintf('%.1f', zlims_cb_v{k}(1)), '0', sprintf('%.1f', zlims_cb_v{k}(2))};
+    drawnow;
+    fname_cb = fullfile(ind_dir, sprintf('colorbar_%s.pdf', cb_tags_v{k}));
+    exportgraphics(fig_cb, fname_cb, 'ContentType', 'vector');
+    close(fig_cb);
+    fprintf('  saved colorbar: %s\n', cb_tags_v{k});
+end
+fprintf('Saved %d individual topomap PDFs + 2 colorbar PDFs to:\n  %s\n', n_rows * n_times, ind_dir);
+
 disp('Done.');
