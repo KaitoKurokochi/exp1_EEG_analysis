@@ -420,12 +420,12 @@ for ci = 1:length(conditions)
 
         xlim([entry.t_erp(1), entry.t_erp(end)]);
         ylim([entry.y_lo, entry.y_hi]);
-        xlabel('Time (s)', 'FontSize', 15);
-        ylabel('\muV',     'FontSize', 15);
+        xlabel('Time (s)', 'FontSize', 18);
+        ylabel('\muV',     'FontSize', 18);
         lgd = legend([h_e, h_n], {'Experienced', 'Novice'}, ...
             'Location', 'southwest', 'FontSize', 12, 'Box', 'off');
         lgd.Position(1) = lgd.Position(1) - 0.02;   % shift legend slightly left
-        set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
+        set(ax_erp, 'FontSize', 18, 'TickDir', 'out', 'Box', 'off');
 
         % Topomap panel position: map topo_pos_in_slot into this slot
         topo_bot = slot_bot + topo_pos_in_slot(2) * slot_h;
@@ -441,6 +441,150 @@ for ci = 1:length(conditions)
     close(fig);
     fprintf('Saved: %s  (%d rows)\n', fname, n_rows);
 end
+
+%% save individual ERP panel and topomap PDFs (vector, Illustrator-ready)
+% Saves each qualified cluster as two separate PDFs:
+%   <cond>_<pol>_<cli>_erp.pdf  — ERP waveform panel (vector)
+%   <cond>_<pol>_<cli>_topo.pdf — scalp topomap (vector, ft_topoplotER)
+% Output directory: result/fig_stat_erp_cbpt/individual/
+% Use arrange_erp.jsx to assemble these into the final Illustrator figure.
+clear;
+config;
+
+data_cluster_dir = fullfile(prj_dir, 'result', 'stat_erp_clusters', 'qualified');
+data_erp_dir     = fullfile(prj_dir, 'result', 'erp_group_cond');
+data_stat_dir    = fullfile(prj_dir, 'result', 'stat_erp_cbpt');
+data_rt_dir      = fullfile(prj_dir, 'result', 'stat_rt');
+ind_dir          = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual');
+if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
+
+alpha      = 0.05;
+erp_w_cm   = 9.0;   % ERP panel width  (cm)
+erp_h_cm   = 6.0;   % ERP panel height (cm)
+topo_cm    = 4.5;   % topomap PDF size (cm, square)
+fs_ax      = 18;    % axes tick label font size (pt)
+fs_label   = 18;    % xlabel / ylabel font size (pt)
+fs_leg     = 14;    % legend font size (pt)
+
+col_exp = [0.00, 0.45, 0.74];
+col_nov = [0.85, 0.33, 0.10];
+col_sig = [0.85, 0.85, 0.85];
+
+load(fullfile(data_rt_dir, 'stat.mat'));
+mean_rt_exp = mean(stat.exp.m_rt);
+mean_rt_nov = mean(stat.nov.m_rt);
+
+disp('--- saving individual ERP + topomap PDFs ---');
+for ci = 1:length(conditions)
+    cond = conditions{ci};
+
+    load(fullfile(data_erp_dir, ['exp_', cond, '.mat']));
+    cfg_avg = []; cfg_avg.keeptrials = 'no';
+    avg_exp_full = ft_timelockanalysis(cfg_avg, data); clear data;
+
+    load(fullfile(data_erp_dir, ['nov_', cond, '.mat']));
+    avg_nov_full = ft_timelockanalysis(cfg_avg, data); clear data;
+
+    load(fullfile(data_stat_dir, [cond, '.mat']));
+
+    for pol_i = 1:2
+        if pol_i == 1, pol = 'pos'; clusters = stat.posclusters;
+        else,          pol = 'neg'; clusters = stat.negclusters;
+        end
+
+        for cli = 1:length(clusters)
+            if clusters(cli).prob >= alpha, break; end
+
+            fpath = fullfile(data_cluster_dir, [cond, '_', pol, '_', num2str(cli), '.mat']);
+            if ~exist(fpath, 'file'), continue; end
+            load(fpath);   % loads 'data'
+
+            tag        = sprintf('%s_%s_%d', cond, pol, cli);
+            chan_names = data.erp_exp.label;
+
+            cfg_sel = []; cfg_sel.channel = chan_names; cfg_sel.latency = [0.0, 0.5];
+            avg_exp_ch = ft_selectdata(cfg_sel, avg_exp_full);
+            avg_nov_ch = ft_selectdata(cfg_sel, avg_nov_full);
+
+            erp_e = mean(avg_exp_ch.avg, 1);
+            erp_n = mean(avg_nov_ch.avg, 1);
+            t_erp = avg_exp_ch.time;
+            sig_t  = any(data.mask, 1);
+            t_stat = stat.time;
+
+            y_all = [erp_e, erp_n];
+            pad_y = 0.15 * range(y_all);
+            y_lo  = min(y_all) - pad_y;
+            y_hi  = max(y_all) + pad_y;
+
+            % ---- ERP waveform panel (vector PDF) ----------------------------
+            fig_erp = figure('Visible', 'off', 'Units', 'centimeters', ...
+                'Position', [0, 0, erp_w_cm, erp_h_cm]);
+            ax_erp = axes('Position', [0.14, 0.18, 0.82, 0.76]); %#ok<LAXES>
+            hold on;
+
+            d    = diff([false, sig_t(:)', false]);
+            ons  = find(d ==  1);
+            offs = find(d == -1) - 1;
+            for rii = 1:length(ons)
+                fill([t_stat(ons(rii)) t_stat(offs(rii)) t_stat(offs(rii)) t_stat(ons(rii))], ...
+                    [y_lo y_lo y_hi y_hi], col_sig, 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+            end
+
+            xline(0, 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
+            yline(0, 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
+
+            h_e = plot(t_erp, erp_e, 'Color', col_exp, 'LineWidth', 1.5);
+            h_n = plot(t_erp, erp_n, 'Color', col_nov, 'LineWidth', 1.5);
+
+            if strcmp(cond, 'go')
+                xline(mean_rt_exp, '--', 'Color', col_exp, 'LineWidth', 1.0, 'Alpha', 0.6);
+                xline(mean_rt_nov, '--', 'Color', col_nov, 'LineWidth', 1.0, 'Alpha', 0.6);
+            end
+
+            xlim([t_erp(1), t_erp(end)]);
+            ylim([y_lo, y_hi]);
+            xlabel('Time (s)', 'FontSize', fs_label);
+            ylabel('\muV',     'FontSize', fs_label);
+            lgd = legend([h_e, h_n], {'Experienced', 'Novice'}, ...
+                'Location', 'southwest', 'FontSize', fs_leg, 'Box', 'off');
+            lgd.Position(1) = lgd.Position(1) - 0.02;
+            set(ax_erp, 'FontSize', fs_ax, 'TickDir', 'out', 'Box', 'off');
+
+            fname_erp = fullfile(ind_dir, [tag, '_erp.pdf']);
+            exportgraphics(fig_erp, fname_erp, 'ContentType', 'vector');
+            close(fig_erp);
+
+            % ---- Topomap panel (vector PDF) ---------------------------------
+            tmp_stat       = stat;
+            tmp_stat.stat  = zeros(size(stat.stat));
+            fig_topo = figure('Visible', 'off', 'Units', 'centimeters', ...
+                'Position', [0, 0, topo_cm, topo_cm]);
+            cfg_t = [];
+            cfg_t.parameter          = 'stat';
+            cfg_t.layout             = 'easycapM11.mat';
+            cfg_t.style              = 'blank';
+            cfg_t.comment            = 'no';
+            cfg_t.colorbar           = 'no';
+            cfg_t.markers            = 'on';
+            cfg_t.markersize         = 3;
+            cfg_t.highlight          = 'on';
+            cfg_t.highlightchannel   = chan_names;
+            cfg_t.highlightsymbol    = 'o';
+            cfg_t.highlightcolor     = [0.8 0 0];
+            cfg_t.highlightsize      = 8;
+            cfg_t.highlightlinewidth = 1.5;
+            ft_topoplotER(cfg_t, tmp_stat);
+
+            fname_topo = fullfile(ind_dir, [tag, '_topo.pdf']);
+            exportgraphics(fig_topo, fname_topo, 'ContentType', 'vector');
+            close(fig_topo);
+
+            fprintf('  saved: %s\n', tag);
+        end
+    end
+end
+fprintf('Saved individual PDFs to:\n  %s\n', ind_dir);
 
 %% figure - skipped clusters (ERP waveform + topomap, PNG)
 % Visualise clusters that were excluded by the skip criteria.
@@ -590,8 +734,8 @@ for ci = 1:length(conditions)
 
             xlim([t_erp(1), t_erp(end)]);
             ylim([y_lo, y_hi]);
-            xlabel('Time (s)', 'FontSize', 15);
-            ylabel('\muV',     'FontSize', 15);
+            xlabel('Time (s)', 'FontSize', 18);
+            ylabel('\muV',     'FontSize', 18);
 
             % build title
             title_str = sprintf('[SKIPPED] %s %s%d  p=%.4f', ...
@@ -600,7 +744,7 @@ for ci = 1:length(conditions)
 
             legend([h_e, h_n], {'Experienced', 'Novice'}, ...
                 'Location', 'southwest', 'FontSize', 12, 'Box', 'off');
-            set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
+            set(ax_erp, 'FontSize', 18, 'TickDir', 'out', 'Box', 'off');
 
             % Topomap panel (right)
             ax_topo = axes('Position', [0.70, 0.18, 0.28, 0.64]); %#ok<LAXES>
