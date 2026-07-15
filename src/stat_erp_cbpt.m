@@ -549,7 +549,7 @@ for ci = 1:length(conditions)
             xlabel('Time (s)', 'FontSize', 15);
             ylabel('\muV',     'FontSize', 15);
             lgd = legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-                'Location', 'southwest', 'FontSize', 12, 'Box', 'off');
+                'Location', 'southwest', 'FontSize', 11.5, 'Box', 'off');
             lgd.Position(1) = lgd.Position(1) - 0.02;
             set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
 
