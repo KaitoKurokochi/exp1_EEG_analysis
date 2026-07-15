@@ -558,11 +558,11 @@ for ci = 1:length(conditions)
 
             xlim([t_erp(1), t_erp(end)]);
             ylim([y_lo, y_hi]);
-            xlabel('Time (s)', 'FontSize', 15);
-            ylabel('\muV',     'FontSize', 15);
+            xlabel('Time (s)', 'FontSize', 20);
+            ylabel('\muV',     'FontSize', 20);
             legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-                'Location', 'southwest', 'FontSize', 11, 'Box', 'off');
-            set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
+                'Location', 'southwest', 'FontSize', 15, 'Box', 'off');
+            set(ax_erp, 'FontSize', 25, 'TickDir', 'out', 'Box', 'off');
 
             % Export the axes object directly.  MATLAB's exportgraphics
             % resolves the tight bounding box of ax_erp — including tick
