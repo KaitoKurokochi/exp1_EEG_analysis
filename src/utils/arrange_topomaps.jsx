@@ -54,8 +54,8 @@
     var PT         = 28.3465;
     var TOPO       = 2.96 * PT;   // topomap cell size (must match topo_cm in MATLAB)
     var ROW_GAP    = 0.50 * PT;   // vertical gap between rows
-    var LABEL_W    = 1.20 * PT;   // horizontal space for rotated row labels
-    var TIME_H     = 0.90 * PT;   // vertical space for time labels above the grid
+    var LABEL_W    = 1.00 * PT;   // horizontal space for rotated row labels
+    var TIME_H     = 1.20 * PT;   // vertical space for time labels above the grid
     var CB_GAP     = 0.30 * PT;   // gap between last topomap column and colorbar
 
     // Natural colorbar PDF dimensions (must match MATLAB output):
@@ -64,22 +64,15 @@
     var CB_PDF_W   = 1.80 * PT;
     var CB_PDF_H   = 3.56 * PT;
 
-    var LABEL_FONT = 8;   // pt — row labels
-    var TIME_FONT  = 8;   // pt — time-axis labels
+    var LABEL_FONT = 26;  // pt — row labels
+    var TIME_FONT  = 26;  // pt — time-axis labels
 
     // ---- row and column metadata -------------------------------------------
     var ROW_NAMES = [
         "go_exp",  "go_nov",  "go_diff",
         "nogo_exp","nogo_nov","nogo_diff"
     ];
-    var ROW_LABELS = [
-        "Experienced (Go)",
-        "Novice (Go)",
-        "Experienced − Novice (Go)",
-        "Experienced (No-Go)",
-        "Novice (No-Go)",
-        "Experienced − Novice (No-Go)"
-    ];
+    var ROW_LABELS = ["(a)", "(b)", "(c)", "(d)", "(e)", "(f)"];
     // colorbar filename (without .pdf) for each row
     var CB_NAMES = [
         "colorbar_grp","colorbar_grp","colorbar_diff",
