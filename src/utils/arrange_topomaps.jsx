@@ -34,10 +34,17 @@
     ];
     var TIMES_MS = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
-    // ---- origin: top-left of the first artboard ----------------------------
+    // ---- resize artboard to fit the full grid ------------------------------
+    // Total size: 11 cols x TOPO wide, 6 rows x TOPO tall + 5 gaps
+    var totalW = TIMES_MS.length  * TOPO;
+    var totalH = ROW_NAMES.length * TOPO + (ROW_NAMES.length - 1) * ROW_GAP;
+
     var abRect  = doc.artboards[0].artboardRect;  // [left, top, right, bottom]
     var originX = abRect[0];
     var originY = abRect[1];   // top edge (y increases upward in Illustrator)
+
+    // Keep top-left corner fixed; extend right and down to fit all cells
+    doc.artboards[0].artboardRect = [originX, originY, originX + totalW, originY - totalH];
 
     var placed_count = 0;
     var missing      = [];
