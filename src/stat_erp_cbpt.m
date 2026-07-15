@@ -466,7 +466,7 @@ topo_cm    =  4.5;  % topomap figure size     (cm, square)
 % Fixed axes position within the ERP figure.
 % [left, bottom, width, height] in normalized units.
 % Sized to contain labels and legend at font size 15/12 without overflow.
-erp_ax_pos = [0.13, 0.15, 0.82, 0.76];
+erp_ax_pos = [0.13, 0.18, 0.82, 0.73];
 
 col_exp = [0.00, 0.45, 0.74];
 col_nov = [0.85, 0.33, 0.10];
@@ -549,7 +549,7 @@ for ci = 1:length(conditions)
             xlabel('Time (s)', 'FontSize', 15);
             ylabel('\muV',     'FontSize', 15);
             lgd = legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-                'Location', 'southwest', 'FontSize', 11.5, 'Box', 'off');
+                'Location', 'southwest', 'FontSize', 11, 'Box', 'off');
             lgd.Position(1) = lgd.Position(1) - 0.02;
             set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
 
@@ -745,7 +745,7 @@ for ci = 1:length(conditions)
             title(ax_erp, title_str, 'FontSize', 8, 'Interpreter', 'none');
 
             legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-                'Location', 'southwest', 'FontSize', 12, 'Box', 'off');
+                'Location', 'southwest', 'FontSize', 11.5, 'Box', 'off');
             set(ax_erp, 'FontSize', 18, 'TickDir', 'out', 'Box', 'off');
 
             % Topomap panel (right)
