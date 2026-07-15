@@ -442,12 +442,12 @@ for ci = 1:length(conditions)
     fprintf('Saved: %s  (%d rows)\n', fname, n_rows);
 end
 
-%% save individual row PDFs (vector, Illustrator-ready)
-% Saves each qualified cluster as one PDF with the same layout as the
-% SVG section above (ERP waveform left, topomap right, 16x7 cm).
+%% save individual ERP and topomap PDFs (vector, Illustrator-ready)
+% Saves each qualified cluster as two separate PDFs:
+%   <cond>_<pol>_<cli>_erp.pdf  — ERP waveform panel (10 x 7 cm, vector)
+%   <cond>_<pol>_<cli>_topo.pdf — scalp topomap    (4.5 x 4.5 cm, vector)
 % Output directory: result/fig_stat_erp_cbpt/individual/
-%   <cond>_<pol>_<cli>.pdf  (e.g. go_pos_1.pdf, nogo_neg_1.pdf)
-% Use arrange_erp.jsx to stack these into the final Illustrator figure.
+% Use arrange_erp.jsx to assemble these into the final Illustrator figure.
 clear;
 config;
 
@@ -458,29 +458,15 @@ data_rt_dir      = fullfile(prj_dir, 'result', 'stat_rt');
 ind_dir          = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual');
 if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
 
-alpha = 0.05;
+alpha      = 0.05;
+erp_w_cm   = 10.0;  % ERP panel figure width  (cm)
+erp_h_cm   =  7.0;  % ERP panel figure height (cm)
+topo_cm    =  4.5;  % topomap figure size     (cm, square)
 
-% Layout parameters — identical to section 3 (SVG)
-erp_pos_in_slot  = [0.09, 0.15, 0.56, 0.76];
-topo_pos_in_slot = [0.66, 0.18, 0.32, 0.70];
-row_margin       = 0.03;
-pad_bot          = 0.02;
-fig_w_cm         = 16;
-fig_h_cm         = 7;
-
-% For a single-row figure, slot occupies the full height
-n_rows  = 1;
-slot_h  = (1 - pad_bot - (n_rows - 1) * row_margin) / n_rows;
-slot_bot = pad_bot;
-
-erp_pos  = [erp_pos_in_slot(1), ...
-            slot_bot + erp_pos_in_slot(2) * slot_h, ...
-            erp_pos_in_slot(3), ...
-            erp_pos_in_slot(4) * slot_h];
-topo_pos = [topo_pos_in_slot(1), ...
-            slot_bot + topo_pos_in_slot(2) * slot_h, ...
-            topo_pos_in_slot(3), ...
-            topo_pos_in_slot(4) * slot_h];
+% Fixed axes position within the ERP figure.
+% [left, bottom, width, height] in normalized units.
+% Sized to contain labels and legend at font size 15/12 without overflow.
+erp_ax_pos = [0.13, 0.15, 0.82, 0.76];
 
 col_exp = [0.00, 0.45, 0.74];
 col_nov = [0.85, 0.33, 0.10];
@@ -490,7 +476,7 @@ load(fullfile(data_rt_dir, 'stat.mat'));
 mean_rt_exp = mean(stat.exp.m_rt);
 mean_rt_nov = mean(stat.nov.m_rt);
 
-disp('--- saving individual row PDFs ---');
+disp('--- saving individual ERP + topomap PDFs ---');
 for ci = 1:length(conditions)
     cond = conditions{ci};
 
@@ -533,35 +519,10 @@ for ci = 1:length(conditions)
             y_lo  = min(y_all) - pad_y;
             y_hi  = max(y_all) + pad_y;
 
-            % ---- capture topomap as raster image (same as section 3) -------
-            tmp_stat       = stat;
-            tmp_stat.stat  = zeros(size(stat.stat));
-            fig_tmp = figure('Visible', 'off', 'Units', 'pixels', 'Position', [0 0 220 220]);
-            cfg_t = [];
-            cfg_t.parameter          = 'stat';
-            cfg_t.layout             = 'easycapM11.mat';
-            cfg_t.style              = 'blank';
-            cfg_t.comment            = 'no';
-            cfg_t.colorbar           = 'no';
-            cfg_t.markers            = 'on';
-            cfg_t.markersize         = 3;
-            cfg_t.highlight          = 'on';
-            cfg_t.highlightchannel   = chan_names;
-            cfg_t.highlightsymbol    = 'o';
-            cfg_t.highlightcolor     = [0.8 0 0];
-            cfg_t.highlightsize      = 8;
-            cfg_t.highlightlinewidth = 1.5;
-            ft_topoplotER(cfg_t, tmp_stat);
-            topo_img = print(fig_tmp, '-RGBImage');
-            topo_img = imresize(topo_img, [220 220]);
-            close(fig_tmp);
-
-            % ---- assemble single-row figure (same layout as section 3) -----
-            fig = figure('Visible', 'off', 'Units', 'centimeters', ...
-                'Position', [0, 0, fig_w_cm, fig_h_cm]);
-
-            % ERP waveform panel
-            ax_erp = axes('Position', erp_pos); %#ok<LAXES>
+            % ---- ERP waveform panel (vector PDF, 10 x 7 cm) ----------------
+            fig_erp = figure('Visible', 'off', 'Units', 'centimeters', ...
+                'Position', [0, 0, erp_w_cm, erp_h_cm]);
+            ax_erp = axes('Position', erp_ax_pos); %#ok<LAXES>
             hold on;
 
             d    = diff([false, sig_t(:)', false]);
@@ -592,20 +553,40 @@ for ci = 1:length(conditions)
             lgd.Position(1) = lgd.Position(1) - 0.02;
             set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
 
-            % Topomap panel
-            ax_topo = axes('Position', topo_pos); %#ok<LAXES>
-            image(ax_topo, topo_img);
-            axis(ax_topo, 'image');
-            axis(ax_topo, 'off');
+            fname_erp = fullfile(ind_dir, [tag, '_erp.pdf']);
+            exportgraphics(fig_erp, fname_erp, 'ContentType', 'vector');
+            close(fig_erp);
 
-            fname = fullfile(ind_dir, [tag, '.pdf']);
-            exportgraphics(fig, fname, 'ContentType', 'vector');
-            close(fig);
+            % ---- Topomap panel (vector PDF, 4.5 x 4.5 cm) ------------------
+            tmp_stat       = stat;
+            tmp_stat.stat  = zeros(size(stat.stat));
+            fig_topo = figure('Visible', 'off', 'Units', 'centimeters', ...
+                'Position', [0, 0, topo_cm, topo_cm]);
+            cfg_t = [];
+            cfg_t.parameter          = 'stat';
+            cfg_t.layout             = 'easycapM11.mat';
+            cfg_t.style              = 'blank';
+            cfg_t.comment            = 'no';
+            cfg_t.colorbar           = 'no';
+            cfg_t.markers            = 'on';
+            cfg_t.markersize         = 3;
+            cfg_t.highlight          = 'on';
+            cfg_t.highlightchannel   = chan_names;
+            cfg_t.highlightsymbol    = 'o';
+            cfg_t.highlightcolor     = [0.8 0 0];
+            cfg_t.highlightsize      = 8;
+            cfg_t.highlightlinewidth = 1.5;
+            ft_topoplotER(cfg_t, tmp_stat);
+
+            fname_topo = fullfile(ind_dir, [tag, '_topo.pdf']);
+            exportgraphics(fig_topo, fname_topo, 'ContentType', 'vector');
+            close(fig_topo);
+
             fprintf('  saved: %s\n', tag);
         end
     end
 end
-fprintf('Saved individual row PDFs to:\n  %s\n', ind_dir);
+fprintf('Saved individual PDFs to:\n  %s\n', ind_dir);
 
 %% figure - skipped clusters (ERP waveform + topomap, PNG)
 % Visualise clusters that were excluded by the skip criteria.
