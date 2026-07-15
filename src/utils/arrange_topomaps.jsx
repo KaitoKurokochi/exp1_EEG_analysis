@@ -66,12 +66,14 @@
             var x = originX + ti * TOPO;
             var y = originY - ri * (TOPO + ROW_GAP);
 
-            var item    = doc.placedItems.add();
-            item.file   = file;
-            item.position = [x, y];   // [left edge, top edge]
-            item.width  = TOPO;
-            item.height = TOPO;
-            item.embed();   // embed PDF content to avoid colour profile reinterpretation
+            var item  = doc.placedItems.add();
+            item.file = file;
+            // Calculate exact scale from the PDF's natural page size to TOPO
+            var scaleX = (TOPO / item.width)  * 100;
+            var scaleY = (TOPO / item.height) * 100;
+            item.resize(scaleX, scaleY);   // resize before setting position
+            item.position = [x, y];        // [left edge, top edge]
+            item.embed();   // embed to prevent colour reinterpretation
 
             placed_count++;
         }
