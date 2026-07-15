@@ -182,6 +182,23 @@
                        rowCenterY + tfH / 2];
     }
 
+    // ---- fit artboard to all placed content --------------------------------
+    // The pre-calculated artboard size may not match the actual placed PDF
+    // dimensions exactly.  Re-fit to the union of all item bounding boxes.
+    var items = doc.pageItems;
+    if (items.length > 0) {
+        var minX =  Infinity, maxX = -Infinity;
+        var maxY = -Infinity, minY =  Infinity;
+        for (var i = 0; i < items.length; i++) {
+            var gb = items[i].geometricBounds; // [left, top, right, bottom]
+            if (gb[0] < minX) minX = gb[0];
+            if (gb[1] > maxY) maxY = gb[1];
+            if (gb[2] > maxX) maxX = gb[2];
+            if (gb[3] < minY) minY = gb[3];
+        }
+        doc.artboards[0].artboardRect = [minX, maxY, maxX, minY];
+    }
+
     // ---- report ------------------------------------------------------------
     var msg = "Placed " + placed_count + " topomap PDFs, " +
               cb_placed + " colorbar PDFs, " +
