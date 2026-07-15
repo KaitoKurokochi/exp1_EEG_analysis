@@ -1,8 +1,11 @@
 // arrange_erp.jsx
 // Adobe Illustrator ExtendScript
 //
-// Places individual ERP panel and topomap PDFs (from stat_erp_cbpt.m
-// individual-PDF section) into a 5-row grid on the active artboard.
+// Places individual row PDFs (from stat_erp_cbpt.m individual-PDF section)
+// into a 5-row vertical stack on the active artboard.
+//
+// Each PDF contains one cluster row: ERP waveform (left) + topomap (right),
+// 16 x 7 cm, matching the layout of the SVG section in stat_erp_cbpt.m.
 //
 // Usage:
 //   1. Open (or create) an Illustrator document.
@@ -10,13 +13,11 @@
 //   3. Choose the folder: result/fig_stat_erp_cbpt/individual/
 //
 // Row order (top -> bottom):
-//   (a) go_pos_1  — Go,    positive cluster 1  (frontocentral,  51-109 ms)
-//   (b) go_pos_2  — Go,    positive cluster 2  (parieto-occ,   113-164 ms)
-//   (c) go_neg_1  — Go,    negative cluster 1  (centroparietocc,176-258 ms)
-//   (d) nogo_pos_1 — No-Go, positive cluster 1 (frontocentral,  47-141 ms)
-//   (e) nogo_neg_1 — No-Go, negative cluster 1 (centroparietocc,184-254 ms)
-//
-// Each row: [label] [ERP waveform panel] [gap] [topomap]
+//   (a) go_pos_1   — Go,    positive cluster 1  (frontocentral,   51-109 ms)
+//   (b) go_pos_2   — Go,    positive cluster 2  (parieto-occ,    113-164 ms)
+//   (c) go_neg_1   — Go,    negative cluster 1  (centroparietocc, 176-258 ms)
+//   (d) nogo_pos_1 — No-Go, positive cluster 1  (frontocentral,   47-141 ms)
+//   (e) nogo_neg_1 — No-Go, negative cluster 1  (centroparietocc, 184-254 ms)
 
 #target illustrator
 
@@ -48,17 +49,13 @@
 
     // ---- layout parameters (centimetres -> points; 1 cm = 28.3465 pt) ------
     var PT        = 28.3465;
-    var ERP_W     = 9.0 * PT;   // ERP panel width  (must match erp_w_cm in MATLAB)
-    var ERP_H     = 6.0 * PT;   // ERP panel height (must match erp_h_cm in MATLAB)
-    var TOPO_W    = 4.5 * PT;   // topomap width    (must match topo_cm in MATLAB)
-    var TOPO_H    = 4.5 * PT;   // topomap height   (square)
-    var ERP_TOPO_GAP = 0.30 * PT;   // gap between ERP panel and topomap
-    var ROW_GAP      = 0.50 * PT;   // vertical gap between rows
-    var LABEL_W      = 1.00 * PT;   // space for row labels on the left
-    var LABEL_FONT   = 26;          // pt
+    var ROW_W     = 16.0 * PT;   // row PDF width  (must match fig_w_cm in MATLAB)
+    var ROW_H     =  7.0 * PT;   // row PDF height (must match fig_h_cm in MATLAB)
+    var ROW_GAP   =  0.30 * PT;  // vertical gap between rows
+    var LABEL_W   =  1.00 * PT;  // horizontal space for row labels
+    var LABEL_FONT = 26;          // pt
 
     // ---- row definitions ---------------------------------------------------
-    // file tag (without _erp.pdf / _topo.pdf suffix) and display label
     var ROWS = [
         { tag: "go_pos_1",   label: "(a)" },
         { tag: "go_pos_2",   label: "(b)" },
@@ -68,64 +65,40 @@
     ];
     var N_ROWS = ROWS.length;
 
-    // ---- compute artboard size and grid origin -----------------------------
-    var ROW_H  = ERP_H;   // row height determined by ERP panel height
-    var totalW = LABEL_W + ERP_W + ERP_TOPO_GAP + TOPO_W;
+    // ---- resize artboard ---------------------------------------------------
+    var totalW = LABEL_W + ROW_W;
     var totalH = N_ROWS * ROW_H + (N_ROWS - 1) * ROW_GAP;
 
-    var abRect  = doc.artboards[0].artboardRect;  // [left, top, right, bottom]
+    var abRect  = doc.artboards[0].artboardRect;
     var originX = abRect[0];
     var originY = abRect[1];
     doc.artboards[0].artboardRect = [originX, originY,
                                      originX + totalW, originY - totalH];
 
-    var gridX = originX + LABEL_W;   // left edge of ERP panels
+    var gridX = originX + LABEL_W;
 
-    // convenience: Y of top edge of row ri (0-indexed)
     function rowTopY(ri) {
         return originY - ri * (ROW_H + ROW_GAP);
     }
 
-    // ---- place ERP and topomap PDFs ----------------------------------------
-    var placed = 0;
+    // ---- place row PDFs ----------------------------------------------------
+    var placed  = 0;
     var missing = [];
 
     for (var ri = 0; ri < N_ROWS; ri++) {
-        var tag    = ROWS[ri].tag;
-        var rowTop = rowTopY(ri);
-
-        // -- ERP panel --
-        var erpFile = new File(folder.fullName + "/" + tag + "_erp.pdf");
-        if (!erpFile.exists) {
-            missing.push(tag + "_erp.pdf");
-        } else {
-            var erpItem  = doc.placedItems.add();
-            erpItem.file = erpFile;
-            // scale to exact ERP_W x ERP_H
-            var sx = (ERP_W / erpItem.width)  * 100;
-            var sy = (ERP_H / erpItem.height) * 100;
-            erpItem.resize(sx, sy);
-            erpItem.position = [gridX, rowTop];
-            placed++;
+        var file = new File(folder.fullName + "/" + ROWS[ri].tag + ".pdf");
+        if (!file.exists) {
+            missing.push(ROWS[ri].tag + ".pdf");
+            continue;
         }
 
-        // -- Topomap --
-        var topoFile = new File(folder.fullName + "/" + tag + "_topo.pdf");
-        if (!topoFile.exists) {
-            missing.push(tag + "_topo.pdf");
-        } else {
-            var topoItem  = doc.placedItems.add();
-            topoItem.file = topoFile;
-            // scale to TOPO_W x TOPO_H (square)
-            var tsx = (TOPO_W / topoItem.width)  * 100;
-            var tsy = (TOPO_H / topoItem.height) * 100;
-            topoItem.resize(tsx, tsy);
-            // centre topomap vertically within the row
-            var topoLeft = gridX + ERP_W + ERP_TOPO_GAP;
-            var topoTop  = rowTop - (ROW_H - TOPO_H) / 2;
-            topoItem.position = [topoLeft, topoTop];
-            placed++;
-        }
+        var item  = doc.placedItems.add();
+        item.file = file;
+        var sx = (ROW_W / item.width)  * 100;
+        var sy = (ROW_H / item.height) * 100;
+        item.resize(sx, sy);
+        item.position = [gridX, rowTopY(ri)];
+        placed++;
     }
 
     // ---- add row labels (horizontal, centred vertically on each row) -------
@@ -149,7 +122,7 @@
         var minX =  Infinity, maxX = -Infinity;
         var maxY = -Infinity, minY =  Infinity;
         for (var i = 0; i < items.length; i++) {
-            var gb = items[i].geometricBounds; // [left, top, right, bottom]
+            var gb = items[i].geometricBounds;
             if (gb[0] < minX) minX = gb[0];
             if (gb[1] > maxY) maxY = gb[1];
             if (gb[2] > maxX) maxX = gb[2];
@@ -159,7 +132,7 @@
     }
 
     // ---- report ------------------------------------------------------------
-    var msg = "Placed " + placed + " PDFs, " + N_ROWS + " row labels.";
+    var msg = "Placed " + placed + " row PDFs, " + N_ROWS + " row labels.";
     if (missing.length > 0) {
         msg += "\n\nMissing files (" + missing.length + "):\n" + missing.join("\n");
     }
