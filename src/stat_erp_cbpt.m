@@ -444,10 +444,12 @@ end
 
 %% save individual ERP and topomap PDFs (vector, Illustrator-ready)
 % Saves each qualified cluster as two separate PDFs:
-%   <cond>_<pol>_<cli>_erp.pdf  — ERP waveform panel exported from the axes
-%                                  object (axes-level tight bounding box;
-%                                  includes tick labels, axis labels, and
-%                                  legend; figure canvas size does not clip)
+%   <cond>_<pol>_<cli>_erp.pdf  — ERP waveform panel.
+%       The figure is a rendering canvas only; the PDF is sized to the
+%       tight bounding box of the axes content (plot area + tick labels +
+%       axis labels + legend) via exportgraphics(ax_erp, ...).
+%       No fixed output height: the height adjusts automatically to the
+%       waveform amplitude range of each cluster.
 %   <cond>_<pol>_<cli>_topo.pdf — scalp topomap (topo_cm x topo_cm, vector)
 % Output directory: result/fig_stat_erp_cbpt/individual/
 % Use arrange_erp.jsx to assemble these into the final Illustrator figure.
@@ -462,9 +464,13 @@ ind_dir          = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual'
 if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
 
 alpha      = 0.05;
-erp_w_cm   = 10.0;  % ERP panel figure width  (cm)
-erp_h_cm   =  7.0;  % ERP panel figure height (cm)
-topo_cm    =  4.5;  % topomap figure size     (cm, square)
+% erp_canvas_cm: rendering canvas for ERP figures (NOT the output size).
+% A generous canvas gives the MATLAB layout engine enough room to compute
+% correct text extents even in Visible='off' mode.  The actual PDF size
+% is determined by exportgraphics from the axes tight bounding box.
+erp_canvas_w = 16.0;  % cm
+erp_canvas_h = 12.0;  % cm
+topo_cm      =  4.5;  % topomap output size (cm, square)
 
 col_exp = [0.00, 0.45, 0.74];
 col_nov = [0.85, 0.33, 0.10];
@@ -518,16 +524,16 @@ for ci = 1:length(conditions)
             y_hi  = max(y_all) + pad_y;
 
             % ---- ERP waveform panel (vector PDF) --------------------------------
-            % Figure size determines the physical size of the plot area.
-            % We export the axes object (ax_erp) rather than the figure so
-            % that exportgraphics computes the tight bounding box of the
-            % axes content — including all tick labels, axis labels, and the
-            % legend — using the actual rendering engine.  Content that
-            % would fall outside the figure canvas is still captured,
-            % eliminating the clipping that TightInset-based repositioning
-            % could not reliably fix for off-screen figures.
+            % The figure is a rendering canvas only.  A generous size
+            % (erp_canvas_w x erp_canvas_h) ensures MATLAB's layout engine
+            % computes correct text extents in Visible='off' mode.
+            % exportgraphics(ax_erp, ...) then produces a PDF whose page
+            % dimensions equal the tight bounding box of the axes content
+            % (plot area + tick labels + axis labels + legend).
+            % The output height therefore adapts dynamically to the
+            % amplitude range of each cluster waveform.
             fig_erp = figure('Visible', 'off', 'Units', 'centimeters', ...
-                'Position', [0, 0, erp_w_cm, erp_h_cm]);
+                'Position', [0, 0, erp_canvas_w, erp_canvas_h]);
             ax_erp = axes(fig_erp); %#ok<LAXES>
             hold on;
 
