@@ -1,28 +1,40 @@
 // arrange_erp.jsx
 // Adobe Illustrator ExtendScript
 //
-// Places individual ERP and topomap PDFs (from stat_erp_cbpt.m
-// individual-PDF section) into a 5-row grid on the active artboard.
+// Arranges individual ERP + topomap PDFs (from stat_erp_cbpt.m
+// individual-PDF section) to match the Figure 7 layout in main.tex.
 //
-// Each row: [label] [ERP waveform PDF] [gap] [topomap PDF]
+// Run once per condition on separate Illustrator documents:
+//   Go    -> stacks go_pos_1 / go_pos_2 / go_neg_1   (3 rows)
+//   No-Go -> stacks nogo_pos_1 / nogo_neg_1           (2 rows)
+//
+// Each row: [ERP waveform PDF] [gap] [topomap PDF]  (no row labels)
 //   ERP PDF : 10 x 7 cm  (must match erp_w_cm / erp_h_cm in MATLAB)
 //   Topo PDF: 4.5 x 4.5 cm (must match topo_cm in MATLAB)
 //
 // Usage:
 //   1. Open (or create) an Illustrator document.
 //   2. File > Scripts > Other Script... > select this file.
-//   3. Choose the folder: result/fig_stat_erp_cbpt/individual/
-//
-// Row order (top -> bottom):
-//   (a) go_pos_1   — Go,    positive cluster 1  (frontocentral,   51-109 ms)
-//   (b) go_pos_2   — Go,    positive cluster 2  (parieto-occ,    113-164 ms)
-//   (c) go_neg_1   — Go,    negative cluster 1  (centroparietocc, 176-258 ms)
-//   (d) nogo_pos_1 — No-Go, positive cluster 1  (frontocentral,   47-141 ms)
-//   (e) nogo_neg_1 — No-Go, negative cluster 1  (centroparietocc, 184-254 ms)
+//   3. Select condition (Go / No-Go) in the dialog.
+//   4. Choose the folder: result/fig_stat_erp_cbpt/individual/
 
 #target illustrator
 
 (function () {
+
+    // ---- choose condition --------------------------------------------------
+    var isGo = confirm(
+        "Which condition?\n\n" +
+        "OK     = Go    (3 rows: go_pos_1, go_pos_2, go_neg_1)\n" +
+        "Cancel = No-Go (2 rows: nogo_pos_1, nogo_neg_1)"
+    );
+
+    var ROWS;
+    if (isGo) {
+        ROWS = ["go_pos_1", "go_pos_2", "go_neg_1"];
+    } else {
+        ROWS = ["nogo_pos_1", "nogo_neg_1"];
+    }
 
     var folder = Folder.selectDialog(
         "Select the 'individual' folder  (result/fig_stat_erp_cbpt/individual)"
@@ -56,31 +68,18 @@
     var TOPO_H       =  4.5 * PT;   // topomap height   (square)
     var ERP_TOPO_GAP =  0.30 * PT;  // gap between ERP panel and topomap
     var ROW_GAP      =  0.30 * PT;  // vertical gap between rows
-    var LABEL_W      =  1.00 * PT;  // horizontal space for row labels
-    var LABEL_FONT   = 26;           // pt
 
-    // ---- row definitions ---------------------------------------------------
-    var ROWS = [
-        { tag: "go_pos_1",   label: "(a)" },
-        { tag: "go_pos_2",   label: "(b)" },
-        { tag: "go_neg_1",   label: "(c)" },
-        { tag: "nogo_pos_1", label: "(d)" },
-        { tag: "nogo_neg_1", label: "(e)" }
-    ];
     var N_ROWS = ROWS.length;
-
-    // ---- resize artboard ---------------------------------------------------
     var ROW_H  = ERP_H;
-    var totalW = LABEL_W + ERP_W + ERP_TOPO_GAP + TOPO_W;
+    var totalW = ERP_W + ERP_TOPO_GAP + TOPO_W;
     var totalH = N_ROWS * ROW_H + (N_ROWS - 1) * ROW_GAP;
 
+    // ---- resize artboard ---------------------------------------------------
     var abRect  = doc.artboards[0].artboardRect;
     var originX = abRect[0];
     var originY = abRect[1];
     doc.artboards[0].artboardRect = [originX, originY,
                                      originX + totalW, originY - totalH];
-
-    var gridX = originX + LABEL_W;
 
     function rowTopY(ri) {
         return originY - ri * (ROW_H + ROW_GAP);
@@ -91,10 +90,10 @@
     var missing = [];
 
     for (var ri = 0; ri < N_ROWS; ri++) {
-        var tag    = ROWS[ri].tag;
+        var tag    = ROWS[ri];
         var rowTop = rowTopY(ri);
 
-        // -- ERP panel --
+        // -- ERP panel (left) --
         var erpFile = new File(folder.fullName + "/" + tag + "_erp.pdf");
         if (!erpFile.exists) {
             missing.push(tag + "_erp.pdf");
@@ -104,11 +103,11 @@
             var sx = (ERP_W / erpItem.width)  * 100;
             var sy = (ERP_H / erpItem.height) * 100;
             erpItem.resize(sx, sy);
-            erpItem.position = [gridX, rowTop];
+            erpItem.position = [originX, rowTop];
             placed++;
         }
 
-        // -- Topomap (centred vertically on the row) --
+        // -- Topomap (right, centred vertically on the row) --
         var topoFile = new File(folder.fullName + "/" + tag + "_topo.pdf");
         if (!topoFile.exists) {
             missing.push(tag + "_topo.pdf");
@@ -118,26 +117,11 @@
             var tsx = (TOPO_W / topoItem.width)  * 100;
             var tsy = (TOPO_H / topoItem.height) * 100;
             topoItem.resize(tsx, tsy);
-            var topoLeft = gridX + ERP_W + ERP_TOPO_GAP;
+            var topoLeft = originX + ERP_W + ERP_TOPO_GAP;
             var topoTop  = rowTop - (ROW_H - TOPO_H) / 2;
             topoItem.position = [topoLeft, topoTop];
             placed++;
         }
-    }
-
-    // ---- add row labels (horizontal, centred vertically on each row) -------
-    for (var ri = 0; ri < N_ROWS; ri++) {
-        var rowCenterY   = rowTopY(ri) - ROW_H / 2;
-        var labelCenterX = originX + LABEL_W / 2;
-
-        var tf = doc.textFrames.add();
-        tf.contents = ROWS[ri].label;
-        tf.textRange.characterAttributes.size = LABEL_FONT;
-
-        var tfW = tf.width;
-        var tfH = tf.height;
-        tf.position = [labelCenterX - tfW / 2,
-                       rowCenterY   + tfH / 2];
     }
 
     // ---- fit artboard to all content ---------------------------------------
@@ -156,7 +140,8 @@
     }
 
     // ---- report ------------------------------------------------------------
-    var msg = "Placed " + placed + " PDFs, " + N_ROWS + " row labels.";
+    var condName = isGo ? "Go" : "No-Go";
+    var msg = condName + ": placed " + placed + " PDFs (" + N_ROWS + " rows).";
     if (missing.length > 0) {
         msg += "\n\nMissing files (" + missing.length + "):\n" + missing.join("\n");
     }
