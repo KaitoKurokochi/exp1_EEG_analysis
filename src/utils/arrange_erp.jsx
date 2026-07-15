@@ -5,12 +5,15 @@
 // individual-PDF section) to match the Figure 7 layout in main.tex.
 //
 // Run once per condition on separate Illustrator documents:
-//   Go    -> stacks go_pos_1 / go_pos_2 / go_neg_1   (3 rows)
-//   No-Go -> stacks nogo_pos_1 / nogo_neg_1           (2 rows)
+//   Go    -> stacks go_pos_2 / go_pos_3 / go_neg_1   (3 rows)
+//   No-Go -> stacks nogo_pos_2 / nogo_neg_2           (2 rows)
 //
 // Each row: [ERP waveform PDF] [gap] [topomap PDF]  (no row labels)
-//   ERP PDF : 10 x 7 cm  (must match erp_w_cm / erp_h_cm in MATLAB)
+//   ERP PDF : placed at ERP_W width (uniform scale, height from tight content)
 //   Topo PDF: 4.5 x 4.5 cm (must match topo_cm in MATLAB)
+//
+// Row height is read from the actual placed ERP PDF and tracked dynamically,
+// so panels with different waveform amplitudes do not distort each other.
 //
 // Usage:
 //   1. Open (or create) an Illustrator document.
@@ -62,52 +65,52 @@
 
     // ---- layout parameters (centimetres -> points; 1 cm = 28.3465 pt) ------
     var PT           = 28.3465;
-    var ERP_W        = 10.0 * PT;   // ERP panel width  (must match erp_w_cm in MATLAB)
-    var ERP_H        =  7.0 * PT;   // ERP panel height (must match erp_h_cm in MATLAB)
-    var TOPO_W       =  4.5 * PT;   // topomap width    (must match topo_cm in MATLAB)
-    var TOPO_H       =  4.5 * PT;   // topomap height   (square)
+    // ERP_W is the target width for the ERP panel in Illustrator.
+    // The MATLAB axes-level tight PDF is scaled uniformly to this width;
+    // height is determined by the PDF's own tight content bounds.
+    var ERP_W        = 10.0 * PT;   // ERP panel target width (pts)
+    var ERP_H_FB     =  7.5 * PT;   // fallback row height if ERP PDF missing
+    var TOPO_W       =  4.5 * PT;   // topomap target width  (must match topo_cm in MATLAB)
+    var TOPO_H       =  4.5 * PT;   // topomap target height (square)
     var ERP_TOPO_GAP =  0.30 * PT;  // gap between ERP panel and topomap
     var ROW_GAP      =  0.30 * PT;  // vertical gap between rows
 
     var N_ROWS = ROWS.length;
-    var ROW_H  = ERP_H;
-    var totalW = ERP_W + ERP_TOPO_GAP + TOPO_W;
-    var totalH = N_ROWS * ROW_H + (N_ROWS - 1) * ROW_GAP;
 
-    // ---- resize artboard ---------------------------------------------------
+    // ---- get origin from artboard ------------------------------------------
     var abRect  = doc.artboards[0].artboardRect;
     var originX = abRect[0];
-    var originY = abRect[1];
-    doc.artboards[0].artboardRect = [originX, originY,
-                                     originX + totalW, originY - totalH];
-
-    function rowTopY(ri) {
-        return originY - ri * (ROW_H + ROW_GAP);
-    }
+    var originY = abRect[1];  // top-left Y of artboard
 
     // ---- place ERP and topomap PDFs ----------------------------------------
+    // curY tracks the top edge of the current row (decreases downward).
+    var curY    = originY;
     var placed  = 0;
     var missing = [];
 
     for (var ri = 0; ri < N_ROWS; ri++) {
         var tag    = ROWS[ri];
-        var rowTop = rowTopY(ri);
+        var rowH   = ERP_H_FB;  // default row height (used if ERP PDF missing)
+        var rowTop = curY;
 
-        // -- ERP panel (left) --
+        // -- ERP panel (left) — uniform scale to ERP_W, height from tight content --
         var erpFile = new File(folder.fullName + "/" + tag + "_erp.pdf");
         if (!erpFile.exists) {
             missing.push(tag + "_erp.pdf");
         } else {
             var erpItem  = doc.placedItems.add();
             erpItem.file = erpFile;
-            var sx = (ERP_W / erpItem.width)  * 100;
-            var sy = (ERP_H / erpItem.height) * 100;
-            erpItem.resize(sx, sy);
+            // Scale uniformly by width: no aspect-ratio distortion.
+            // Height reflects the axes tight bounding box (including labels),
+            // which varies with amplitude range across panels.
+            var sx = (ERP_W / erpItem.width) * 100;
+            erpItem.resize(sx, sx);
+            rowH = erpItem.height;  // actual height after uniform scale
             erpItem.position = [originX, rowTop];
             placed++;
         }
 
-        // -- Topomap (right, centred vertically on the row) --
+        // -- Topomap (right, centred vertically on actual row height) --
         var topoFile = new File(folder.fullName + "/" + tag + "_topo.pdf");
         if (!topoFile.exists) {
             missing.push(tag + "_topo.pdf");
@@ -118,10 +121,13 @@
             var tsy = (TOPO_H / topoItem.height) * 100;
             topoItem.resize(tsx, tsy);
             var topoLeft = originX + ERP_W + ERP_TOPO_GAP;
-            var topoTop  = rowTop - (ROW_H - TOPO_H) / 2;
+            var topoTop  = rowTop - (rowH - TOPO_H) / 2;  // centre on actual rowH
             topoItem.position = [topoLeft, topoTop];
             placed++;
         }
+
+        // Advance curY by actual row height plus gap
+        curY -= rowH + ROW_GAP;
     }
 
     // ---- fit artboard to all content ---------------------------------------
