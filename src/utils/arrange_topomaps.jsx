@@ -54,7 +54,7 @@
     var PT         = 28.3465;
     var TOPO       = 2.96 * PT;   // topomap cell size (must match topo_cm in MATLAB)
     var ROW_GAP    = 0.50 * PT;   // vertical gap between rows
-    var LABEL_W    = 1.00 * PT;   // horizontal space for rotated row labels
+    var LABEL_W    = 1.50 * PT;   // horizontal space for row labels
     var TIME_H     = 1.20 * PT;   // vertical space for time labels above the grid
     var CB_GAP     = 0.30 * PT;   // gap between last topomap column and colorbar
 
@@ -65,7 +65,7 @@
     var CB_PDF_H   = 3.56 * PT;
 
     var LABEL_FONT = 26;  // pt — row labels
-    var TIME_FONT  = 26;  // pt — time-axis labels
+    var TIME_FONT  = 20;  // pt — time-axis labels
 
     // ---- row and column metadata -------------------------------------------
     var ROW_NAMES = [
@@ -167,23 +167,19 @@
                        originY - (TIME_H - tfH) / 2];
     }
 
-    // ---- add row labels (rotated 90 deg CCW) to the left of the grid ------
+    // ---- add row labels (horizontal) to the left of the grid --------------
     for (var ri = 0; ri < ROW_NAMES.length; ri++) {
         var rowCenterY   = rowTopY(ri) - TOPO / 2;
-        var labelCenterX = originX + LABEL_W / 2;
 
         var tf = doc.textFrames.add();
         tf.contents = ROW_LABELS[ri];
         tf.textRange.characterAttributes.size = LABEL_FONT;
 
-        // Rotate 90 deg CCW around the item's own centre so text reads
-        // from bottom to top (standard axis-label orientation).
-        tf.rotate(90);
-
-        // After rotation: tf.width ~ original text height, tf.height ~ original text width.
-        // Centre the rotated frame on (labelCenterX, rowCenterY).
-        tf.position = [labelCenterX - tf.width  / 2,
-                       rowCenterY   + tf.height / 2];
+        var tfW = tf.width;
+        var tfH = tf.height;
+        // Centre horizontally within LABEL_W, centre vertically on the row
+        tf.position = [originX + (LABEL_W - tfW) / 2,
+                       rowCenterY + tfH / 2];
     }
 
     // ---- report ------------------------------------------------------------
