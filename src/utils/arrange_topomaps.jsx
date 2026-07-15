@@ -64,6 +64,7 @@
             item.position = [x, y];   // [left edge, top edge]
             item.width  = TOPO;
             item.height = TOPO;
+            item.embed();   // embed PDF content to avoid colour profile reinterpretation
 
             placed_count++;
         }
