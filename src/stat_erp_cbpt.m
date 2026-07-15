@@ -444,8 +444,9 @@ end
 
 %% save individual ERP and topomap PDFs (vector, Illustrator-ready)
 % Saves each qualified cluster as two separate PDFs:
-%   <cond>_<pol>_<cli>_erp.pdf  — ERP waveform panel (10 x 7 cm, vector)
-%   <cond>_<pol>_<cli>_topo.pdf — scalp topomap    (4.5 x 4.5 cm, vector)
+%   <cond>_<pol>_<cli>_erp.pdf  — ERP waveform panel (erp_w_cm x erp_h_cm,
+%                                  axes auto-fitted via TightInset)
+%   <cond>_<pol>_<cli>_topo.pdf — scalp topomap (topo_cm x topo_cm, vector)
 % Output directory: result/fig_stat_erp_cbpt/individual/
 % Use arrange_erp.jsx to assemble these into the final Illustrator figure.
 clear;
