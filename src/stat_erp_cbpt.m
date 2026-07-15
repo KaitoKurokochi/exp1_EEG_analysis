@@ -520,7 +520,7 @@ for ci = 1:length(conditions)
             % ---- ERP waveform panel (vector PDF) ----------------------------
             fig_erp = figure('Visible', 'off', 'Units', 'centimeters', ...
                 'Position', [0, 0, erp_w_cm, erp_h_cm]);
-            ax_erp = axes('Position', [0.14, 0.18, 0.82, 0.76]); %#ok<LAXES>
+            ax_erp = axes(fig_erp); %#ok<LAXES>
             hold on;
 
             d    = diff([false, sig_t(:)', false]);
@@ -550,6 +550,13 @@ for ci = 1:length(conditions)
                 'Location', 'southwest', 'FontSize', fs_leg, 'Box', 'off');
             lgd.Position(1) = lgd.Position(1) - 0.02;
             set(ax_erp, 'FontSize', fs_ax, 'TickDir', 'out', 'Box', 'off');
+
+            % Fit axes to figure: re-position using TightInset so that
+            % tick labels and axis labels never overflow the figure boundary.
+            drawnow;
+            ti = ax_erp.TightInset;   % [left, bottom, right, top] in normalized units
+            ax_erp.Position = [ti(1), ti(2), ...
+                                1 - ti(1) - ti(3), 1 - ti(2) - ti(4)];
 
             fname_erp = fullfile(ind_dir, [tag, '_erp.pdf']);
             exportgraphics(fig_erp, fname_erp, 'ContentType', 'vector');
