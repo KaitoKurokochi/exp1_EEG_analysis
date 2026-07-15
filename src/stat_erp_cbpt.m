@@ -463,11 +463,6 @@ erp_w_cm   = 10.0;  % ERP panel figure width  (cm)
 erp_h_cm   =  7.0;  % ERP panel figure height (cm)
 topo_cm    =  4.5;  % topomap figure size     (cm, square)
 
-% Fixed axes position within the ERP figure.
-% [left, bottom, width, height] in normalized units.
-% Sized to contain labels and legend at font size 15/12 without overflow.
-erp_ax_pos = [0.13, 0.18, 0.82, 0.73];
-
 col_exp = [0.00, 0.45, 0.74];
 col_nov = [0.85, 0.33, 0.10];
 col_sig = [0.85, 0.85, 0.85];
@@ -522,7 +517,7 @@ for ci = 1:length(conditions)
             % ---- ERP waveform panel (vector PDF, 10 x 7 cm) ----------------
             fig_erp = figure('Visible', 'off', 'Units', 'centimeters', ...
                 'Position', [0, 0, erp_w_cm, erp_h_cm]);
-            ax_erp = axes('Position', erp_ax_pos); %#ok<LAXES>
+            ax_erp = axes(fig_erp); %#ok<LAXES>
             hold on;
 
             d    = diff([false, sig_t(:)', false]);
@@ -548,10 +543,17 @@ for ci = 1:length(conditions)
             ylim([y_lo, y_hi]);
             xlabel('Time (s)', 'FontSize', 15);
             ylabel('\muV',     'FontSize', 15);
-            lgd = legend([h_e, h_n], {'Experienced', 'Novice'}, ...
+            legend([h_e, h_n], {'Experienced', 'Novice'}, ...
                 'Location', 'southwest', 'FontSize', 11, 'Box', 'off');
-            lgd.Position(1) = lgd.Position(1) - 0.02;
             set(ax_erp, 'FontSize', 15, 'TickDir', 'out', 'Box', 'off');
+
+            % Dynamic fit: TightInset reads the actual margins needed for
+            % tick labels and axis labels, then repositions the axes so
+            % nothing is clipped regardless of the waveform amplitude range.
+            drawnow;
+            ti = ax_erp.TightInset;   % [left, bottom, right, top] normalized
+            ax_erp.Position = [ti(1), ti(2), ...
+                                1 - ti(1) - ti(3), 1 - ti(2) - ti(4)];
 
             fname_erp = fullfile(ind_dir, [tag, '_erp.pdf']);
             exportgraphics(fig_erp, fname_erp, 'ContentType', 'vector');
