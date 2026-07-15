@@ -23,6 +23,29 @@
 
     var doc = app.activeDocument;
 
+    // ---- verify document colour mode is RGB ---------------------------------
+    // MATLAB's exportgraphics writes DeviceRGB PDFs (no ICC profile).
+    // Placing an untagged RGB PDF into a CMYK document triggers Illustrator's
+    // RGB->CMYK conversion, which clips/shifts the jet colormap's saturated
+    // primaries and causes visible colour distortion.
+    // The document MUST be in RGB mode for colours to pass through unchanged.
+    if (doc.documentColorSpace !== DocumentColorSpace.RGB) {
+        var switchNow = confirm(
+            "This document is in CMYK mode.\n\n" +
+            "The topomap PDFs use RGB colours (DeviceRGB, no ICC profile).\n" +
+            "Placing them into a CMYK document causes Illustrator to convert\n" +
+            "colours, which distorts the jet colormap.\n\n" +
+            "Switch to RGB Color mode now?\n" +
+            "(File → Document Color Mode → RGB Color)"
+        );
+        if (switchNow) {
+            app.executeMenuCommand("doc-color-rgb");
+        } else {
+            alert("Aborted. Please switch to RGB Color mode manually and re-run the script.");
+            return;
+        }
+    }
+
     // ---- grid parameters (centimetres -> points; 1 cm = 28.3465 pt) --------
     var PT      = 28.3465;
     var TOPO    = 2.96 * PT;   // topomap cell size  (matches topo_cm in MATLAB)
@@ -74,9 +97,7 @@
             item.resize(scaleX, scaleY);   // resize before setting position
             item.position = [x, y];        // [left edge, top edge]
             // Note: embed() is intentionally omitted.
-            // Colours are preserved correctly when the document is in RGB mode
-            // (File > Document Color Mode > RGB Color) and colour management
-            // policies are set to Off (Edit > Color Settings > RGB: Off).
+            // Colour correctness is enforced by the RGB mode check above.
 
             placed_count++;
         }
