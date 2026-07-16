@@ -560,8 +560,6 @@ for ci = 1:length(conditions)
             ylim([y_lo, y_hi]);
             xlabel('Time (s)', 'FontSize', 20);
             ylabel('\muV',     'FontSize', 20);
-            legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-                'Location', 'southwest', 'FontSize', 15, 'Box', 'off');
             set(ax_erp, 'FontSize', 25, 'TickDir', 'out', 'Box', 'off');
 
             % Export the axes object directly.  MATLAB's exportgraphics
@@ -603,6 +601,34 @@ for ci = 1:length(conditions)
     end
 end
 fprintf('Saved individual PDFs to:\n  %s\n', ind_dir);
+
+%% legend PDF
+% Creates a standalone horizontal legend PDF for Illustrator figure assembly.
+% Shows: Experienced (blue) and Novice (red) lines.
+% Output: result/fig_stat_erp_cbpt/individual/legend.pdf
+clear;
+config;
+
+ind_dir = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual');
+if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
+
+col_exp = [0.00, 0.45, 0.74];
+col_nov = [0.85, 0.33, 0.10];
+
+fig_leg = figure('Visible', 'off', 'Units', 'centimeters', ...
+    'Position', [0, 0, 10, 2]);
+ax_leg = axes(fig_leg, 'Position', [0, 0, 1, 1], 'Visible', 'off');
+hold(ax_leg, 'on');
+h_e = plot(ax_leg, NaN, NaN, '-', 'Color', col_exp, 'LineWidth', 2.0);
+h_n = plot(ax_leg, NaN, NaN, '-', 'Color', col_nov, 'LineWidth', 2.0);
+lgd = legend(ax_leg, [h_e, h_n], {'Experienced', 'Novice'}, ...
+    'Orientation', 'horizontal', 'FontSize', 15, 'Box', 'off', ...
+    'Location', 'center');
+
+fname_leg = fullfile(ind_dir, 'legend.pdf');
+exportgraphics(lgd, fname_leg, 'ContentType', 'vector');
+close(fig_leg);
+fprintf('Saved legend PDF: %s\n', fname_leg);
 
 %% figure - skipped clusters (ERP waveform + topomap, PNG)
 % Visualise clusters that were excluded by the skip criteria.
