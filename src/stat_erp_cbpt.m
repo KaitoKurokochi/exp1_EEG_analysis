@@ -615,15 +615,26 @@ if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
 col_exp = [0.00, 0.45, 0.74];
 col_nov = [0.85, 0.33, 0.10];
 
+% Use a generous canvas so MATLAB can resolve legend text extents
+% in Visible='off' mode; figure is resized to the legend's actual size below.
 fig_leg = figure('Visible', 'off', 'Units', 'centimeters', ...
-    'Position', [0, 0, 10, 1.5]);
+    'Position', [0, 0, 20, 5]);
 ax_leg = axes(fig_leg, 'Position', [0, 0, 1, 1], 'Visible', 'off');
 hold(ax_leg, 'on');
 h_e = plot(ax_leg, NaN, NaN, '-', 'Color', col_exp, 'LineWidth', 2.0);
 h_n = plot(ax_leg, NaN, NaN, '-', 'Color', col_nov, 'LineWidth', 2.0);
-legend(ax_leg, [h_e, h_n], {'Experienced', 'Novice'}, ...
+lgd = legend(ax_leg, [h_e, h_n], {'Experienced', 'Novice'}, ...
     'Orientation', 'horizontal', 'FontSize', 15, 'Box', 'off', ...
     'Location', 'best');
+
+% Force rendering so legend Position reflects actual content extents
+drawnow;
+
+% Resize figure canvas to match legend size exactly
+lgd.Units     = 'centimeters';
+lgd_sz        = lgd.Position(3:4);   % [width, height] in cm
+fig_leg.Units = 'centimeters';
+fig_leg.Position(3:4) = lgd_sz;
 
 fname_leg = fullfile(ind_dir, 'legend.pdf');
 exportgraphics(fig_leg, fname_leg, 'ContentType', 'vector');
