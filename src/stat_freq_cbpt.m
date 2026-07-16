@@ -300,15 +300,34 @@ disp('Done.');
 %
 % Color limits are loaded from val.mat (saved by section 2).
 % Run section 2 first if val.mat is absent.
+%
+% NOTE (alpha band): To ensure colorbar consistency with Figure 6, the alpha
+% row uses freq_group_cond_alpha/ (alpha-specific wavelet, 5 log-spaced points
+% in 7-13 Hz) and stat_freq_cbpt_alpha/ stat results, matching the data
+% pipeline of stat_freq_cbpt_alpha.m exactly.  All other bands use the
+% standard freq_group_cond/ data.
 
 clear;
 config;
 
-stat_data_dir = fullfile(prj_dir, 'result', 'stat_freq_cbpt');
-freq_data_dir = fullfile(prj_dir, 'result', 'freq_group_cond');
-res_dir       = fullfile(prj_dir, 'result', 'fig_freq_overview_topo');
+stat_data_dir       = fullfile(prj_dir, 'result', 'stat_freq_cbpt');
+freq_data_dir       = fullfile(prj_dir, 'result', 'freq_group_cond');
+alpha_freq_data_dir = fullfile(prj_dir, 'result', 'freq_group_cond_alpha');
+alpha_stat_dir      = fullfile(prj_dir, 'result', 'stat_freq_cbpt_alpha');
+res_dir             = fullfile(prj_dir, 'result', 'fig_freq_overview_topo');
 
 load(fullfile(stat_data_dir, 'val.mat'));
+
+% Load alpha-specific zlim from Figure 6 cache for colorbar consistency
+alpha_cache_path = fullfile(prj_dir, 'result', 'fig_freq_alpha_topo', 'imgs_cache.mat');
+if exist(alpha_cache_path, 'file')
+    alpha_cache      = load(alpha_cache_path, 'zlim_diff');
+    zlim_diff_alpha  = alpha_cache.zlim_diff;
+    fprintf('Alpha zlim loaded from Figure 6 cache: [%.4f, %.4f]\n', zlim_diff_alpha(1), zlim_diff_alpha(2));
+else
+    zlim_diff_alpha = [];
+    warning('Alpha figure cache not found; falling back to val.mat zlim for alpha band.');
+end
 
 bands = { ...
     [4  7],   'Theta'; ...
@@ -344,11 +363,30 @@ for ci = 1:length(conditions)
     load(fullfile(freq_data_dir, ['exp_', cond, '.mat'])); freq_exp = freq; clear freq;
     load(fullfile(freq_data_dir, ['nov_', cond, '.mat'])); freq_nov = freq; clear freq;
 
+    % Alpha-specific data (freq_group_cond_alpha/) for Figure 6 consistency
+    load(fullfile(alpha_freq_data_dir, ['exp_', cond, '.mat'])); freq_exp_alpha = freq; clear freq;
+    load(fullfile(alpha_freq_data_dir, ['nov_', cond, '.mat'])); freq_nov_alpha = freq; clear freq;
+
     for bi = 1:n_bands
         band_name = bands{bi, 2};
         band_freq = bands{bi, 1};
-        zlim_diff = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
-        s         = load(fullfile(stat_data_dir, [cond, '_', band_name, '.mat']));
+
+        % Alpha band: use alpha-specific data and zlim to match Figure 6
+        if strcmp(band_name, 'alpha')
+            freq_exp_use  = freq_exp_alpha;
+            freq_nov_use  = freq_nov_alpha;
+            s             = load(fullfile(alpha_stat_dir, [cond, '_alpha.mat']));
+            if ~isempty(zlim_diff_alpha)
+                zlim_diff = zlim_diff_alpha;
+            else
+                zlim_diff = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
+            end
+        else
+            freq_exp_use  = freq_exp;
+            freq_nov_use  = freq_nov;
+            s             = load(fullfile(stat_data_dir, [cond, '_', band_name, '.mat']));
+            zlim_diff     = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
+        end
 
         % --- individual topomap PDFs ---
         for ti = 1:n_times
@@ -359,8 +397,8 @@ for ci = 1:length(conditions)
             cfg_sel.latency   = [t - 0.001, t + 0.001];
             cfg_avg            = [];
             cfg_avg.keeptrials = 'no';
-            avg_exp  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp));
-            avg_nov  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov));
+            avg_exp  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp_use));
+            avg_nov  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov_use));
 
             cfg_math           = [];
             cfg_math.operation = 'x1 - x2';
