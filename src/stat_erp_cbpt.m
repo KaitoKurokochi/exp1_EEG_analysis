@@ -623,7 +623,7 @@ h_e = plot(ax_leg, NaN, NaN, '-', 'Color', col_exp, 'LineWidth', 2.0);
 h_n = plot(ax_leg, NaN, NaN, '-', 'Color', col_nov, 'LineWidth', 2.0);
 lgd = legend(ax_leg, [h_e, h_n], {'Experienced', 'Novice'}, ...
     'Orientation', 'horizontal', 'FontSize', 15, 'Box', 'off', ...
-    'Location', 'center');
+    'Location', 'best');
 
 fname_leg = fullfile(ind_dir, 'legend.pdf');
 exportgraphics(lgd, fname_leg, 'ContentType', 'vector');
