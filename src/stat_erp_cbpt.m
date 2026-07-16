@@ -616,17 +616,17 @@ col_exp = [0.00, 0.45, 0.74];
 col_nov = [0.85, 0.33, 0.10];
 
 fig_leg = figure('Visible', 'off', 'Units', 'centimeters', ...
-    'Position', [0, 0, 10, 2]);
+    'Position', [0, 0, 10, 1.5]);
 ax_leg = axes(fig_leg, 'Position', [0, 0, 1, 1], 'Visible', 'off');
 hold(ax_leg, 'on');
 h_e = plot(ax_leg, NaN, NaN, '-', 'Color', col_exp, 'LineWidth', 2.0);
 h_n = plot(ax_leg, NaN, NaN, '-', 'Color', col_nov, 'LineWidth', 2.0);
-lgd = legend(ax_leg, [h_e, h_n], {'Experienced', 'Novice'}, ...
+legend(ax_leg, [h_e, h_n], {'Experienced', 'Novice'}, ...
     'Orientation', 'horizontal', 'FontSize', 15, 'Box', 'off', ...
     'Location', 'best');
 
 fname_leg = fullfile(ind_dir, 'legend.pdf');
-exportgraphics(lgd, fname_leg, 'ContentType', 'vector');
+exportgraphics(fig_leg, fname_leg, 'ContentType', 'vector');
 close(fig_leg);
 fprintf('Saved legend PDF: %s\n', fname_leg);
 
