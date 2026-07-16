@@ -630,11 +630,14 @@ lgd = legend(ax_leg, [h_e, h_n], {'Experienced', 'Novice'}, ...
 % Force rendering so legend Position reflects actual content extents
 drawnow;
 
-% Resize figure canvas to match legend size exactly
+% Read legend size and anchor it to bottom-left of figure.
+% Without the anchor step, the legend retains its original [left, bottom]
+% offset from the large canvas and produces asymmetric margins after resize.
 lgd.Units     = 'centimeters';
-lgd_sz        = lgd.Position(3:4);   % [width, height] in cm
+lgd_pos       = lgd.Position;         % [left, bottom, width, height] in cm
 fig_leg.Units = 'centimeters';
-fig_leg.Position(3:4) = lgd_sz;
+fig_leg.Position(3:4) = lgd_pos(3:4); % resize figure to legend content size
+lgd.Position(1:2)     = [0, 0];       % anchor legend to figure origin
 
 fname_leg = fullfile(ind_dir, 'legend.pdf');
 exportgraphics(fig_leg, fname_leg, 'ContentType', 'vector');
