@@ -288,3 +288,136 @@ for ci = 1:length(conditions)
 end
 
 disp('Done.');
+
+%% save individual topomap PDFs per condition (vector, Illustrator-ready)
+% Saves per-condition × band × time group-difference topomaps and per-band
+% colorbars as vector PDFs to:
+%   result/fig_freq_overview_topo/{cond}_individual/
+%
+% File naming:
+%   {band}_{ms}ms.pdf       e.g.  Theta_000ms.pdf, alpha_050ms.pdf
+%   colorbar_{band}.pdf     e.g.  colorbar_Theta.pdf
+%
+% Color limits are loaded from val.mat (saved by section 2).
+% Run section 2 first if val.mat is absent.
+
+clear;
+config;
+
+stat_data_dir = fullfile(prj_dir, 'result', 'stat_freq_cbpt');
+freq_data_dir = fullfile(prj_dir, 'result', 'freq_group_cond');
+res_dir       = fullfile(prj_dir, 'result', 'fig_freq_overview_topo');
+
+load(fullfile(stat_data_dir, 'val.mat'));
+
+bands = { ...
+    [4  7],   'Theta'; ...
+    [7  13],  'alpha'; ...
+    [13 30],  'beta'; ...
+    [30 45],  'Low_gamma'; ...
+    [60 90],  'High_gamma'};
+n_bands = size(bands, 1);
+
+times   = 0:0.05:0.5;
+n_times = length(times);
+topo_sz = 400;
+
+% colorbar layout constants (match stat_freq_cbpt_alpha.m section 3)
+topo_cm_cb = 2.96;
+cb_w_cm    = 0.40;
+tick_cm    = 1.00;
+pad_l_cm   = 0.20;
+pad_r_cm   = 0.20;
+pad_v_cm   = 0.30;
+fig_cb_w   = pad_l_cm + cb_w_cm + tick_cm + pad_r_cm;
+fig_cb_h   = topo_cm_cb + 2*pad_v_cm;
+cb_x  = pad_l_cm   / fig_cb_w;
+cb_wn = cb_w_cm    / fig_cb_w;
+cb_y  = pad_v_cm   / fig_cb_h;
+cb_hn = topo_cm_cb / fig_cb_h;
+
+for ci = 1:length(conditions)
+    cond    = conditions{ci};
+    ind_dir = fullfile(res_dir, [cond, '_individual']);
+    if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
+
+    load(fullfile(freq_data_dir, ['exp_', cond, '.mat'])); freq_exp = freq; clear freq;
+    load(fullfile(freq_data_dir, ['nov_', cond, '.mat'])); freq_nov = freq; clear freq;
+
+    for bi = 1:n_bands
+        band_name = bands{bi, 2};
+        band_freq = bands{bi, 1};
+        zlim_diff = [-vals.mx_abs_diff(bi), vals.mx_abs_diff(bi)];
+        s         = load(fullfile(stat_data_dir, [cond, '_', band_name, '.mat']));
+
+        % --- individual topomap PDFs ---
+        for ti = 1:n_times
+            t = times(ti);
+
+            cfg_sel           = [];
+            cfg_sel.frequency = band_freq;
+            cfg_sel.latency   = [t - 0.001, t + 0.001];
+            cfg_avg            = [];
+            cfg_avg.keeptrials = 'no';
+            avg_exp  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_exp));
+            avg_nov  = ft_freqdescriptives(cfg_avg, ft_selectdata(cfg_sel, freq_nov));
+
+            cfg_math           = [];
+            cfg_math.operation = 'x1 - x2';
+            cfg_math.parameter = 'powspctrm';
+            freq_diff = ft_math(cfg_math, avg_exp, avg_nov);
+
+            [~, t_idx] = min(abs(s.stat.time - t));
+            mask_t = s.stat.mask(:, t_idx);
+
+            fig_tmp = figure('Visible', 'off', 'Units', 'pixels', ...
+                'Position', [0 0 topo_sz topo_sz]);
+            cfg_t          = [];
+            cfg_t.colorbar = 'no';
+            cfg_t.layout   = 'easycapM11.mat';
+            cfg_t.colormap = 'jet';
+            cfg_t.zlim     = zlim_diff;
+            cfg_t.comment  = 'no';
+            cfg_t.title    = ' ';
+            if any(mask_t)
+                cfg_t.highlight        = 'on';
+                cfg_t.highlightchannel = find(mask_t);
+                cfg_t.highlightsymbol  = '*';
+                cfg_t.highlightcolor   = [0 0 0];
+                cfg_t.highlightsize    = 12;
+            else
+                cfg_t.highlight = 'off';
+            end
+            ft_topoplotTFR(cfg_t, freq_diff);
+            if any(mask_t)
+                set(findobj(gca, 'Type', 'line', 'Marker', '*'), 'LineWidth', 1.0);
+            end
+
+            t_ms      = round(t * 1000);
+            fname_pdf = fullfile(ind_dir, sprintf('%s_%03dms.pdf', band_name, t_ms));
+            exportgraphics(fig_tmp, fname_pdf, 'ContentType', 'vector');
+            close(fig_tmp);
+        end
+        fprintf('  [%s] %s: topo PDFs saved\n', cond, band_name);
+
+        % --- colorbar PDF for this band ---
+        fig_cb = figure('Visible', 'off', 'Units', 'centimeters', ...
+                        'Position', [0, 0, fig_cb_w, fig_cb_h]);
+        ax_tmp = axes('Position', [cb_x - 0.001, cb_y, cb_wn, cb_hn], 'Visible', 'off'); %#ok<LAXES>
+        colormap(ax_tmp, jet(256));
+        set(ax_tmp, 'CLim', zlim_diff, 'CLimMode', 'manual');
+        cb2          = colorbar(ax_tmp, 'Location', 'eastoutside');
+        cb2.Position = [cb_x, cb_y, cb_wn, cb_hn];
+        cb2.FontSize = 18;
+        cb2.Ticks    = [zlim_diff(1), 0, zlim_diff(2)];
+        cb2.TickLabels = {sprintf('%.1f', zlim_diff(1)), '0', sprintf('%.1f', zlim_diff(2))};
+        drawnow;
+        fname_cb = fullfile(ind_dir, sprintf('colorbar_%s.pdf', band_name));
+        exportgraphics(fig_cb, fname_cb, 'ContentType', 'vector');
+        close(fig_cb);
+        fprintf('  [%s] %s: colorbar saved\n', cond, band_name);
+    end
+    fprintf('[%s] %d topo PDFs + %d colorbars -> %s\n', cond, n_bands * n_times, n_bands, ind_dir);
+end
+
+disp('Done (individual PDFs).');
