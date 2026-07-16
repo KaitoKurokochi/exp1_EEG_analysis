@@ -1,23 +1,26 @@
-// arrange_supp_nogo.jsx  (v1)
+// arrange_supp_nogo.jsx  (v2)
 // Adobe Illustrator ExtendScript
 //
-// Places individual full-band diff topomap PDFs (from stat_freq_cbpt.m section 4)
-// into a 5-row x 11-column panel grid on the active artboard.
+// Places individual band-specific diff topomap PDFs (from stat_freq_cbpt.m section 4)
+// into a 6-row x 11-column panel grid on the active artboard.
 // This script is for the No-Go condition supplementary figure.
+//
+// Frequency bands follow Minami et al. (2024); each band uses 5 log-spaced
+// frequency points (following Minami & Amano, 2017).
 //
 // Layout (top -> bottom):
 //   Row 0  : time labels  (0 ms ... 500 ms)               height = TIME_H
-//   [for each of 5 frequency bands:]
-//   Row i  : panel letter "(a)"–"(e)"  (left-aligned)     height = PANEL_LABEL_H
+//   [for each of 6 frequency bands:]
+//   Row i  : band label (left-aligned)                     height = PANEL_LABEL_H
 //   Row i  : topomap row (11 cells) + colorbar on right   height = TOPO
 //   gap    : ROW_GAP
 //
-// Row order:   Theta / alpha / beta / Low_gamma / High_gamma
+// Row order:   delta / Theta / alpha / beta / Low_gamma / High_gamma
 // Col order:   0 ms, 50 ms, ... 500 ms  (11 columns)
 //
 // Prerequisites:
-//   Run stat_freq_cbpt.m section 4 to generate source PDFs in:
-//   result/fig_freq_overview_topo/nogo_individual/
+//   Run erp_to_freq_bands.m, then stat_freq_cbpt.m section 4.
+//   Source PDFs must be in: result/fig_freq_overview_topo/nogo_individual/
 //
 // Usage:
 //   File > Scripts > Other Script... > select this file
@@ -89,16 +92,16 @@
         var TIME_FONT  = 20;   // pt — time-axis labels
 
         // ---- row / column metadata ------------------------------------
-        var ROW_NAMES  = ["Theta", "alpha", "beta", "Low_gamma", "High_gamma"];
-        var ROW_LABELS = ["theta", "alpha", "beta", "low-gamma", "high-gamma"];
+        var ROW_NAMES  = ["delta", "Theta", "alpha", "beta", "Low_gamma", "High_gamma"];
+        var ROW_LABELS = ["delta", "theta", "alpha", "beta", "low-gamma", "high-gamma"];
         var TIMES_MS   = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
-        var NR = ROW_NAMES.length;   // 5
+        var NR = ROW_NAMES.length;   // 6
         var NC = TIMES_MS.length;    // 11
 
         // ---- artboard size -------------------------------------------
         // Total width:  11 topos + 10 column gaps + CB_GAP + colorbar
-        // Total height: time header + 5 * (panel label + topo) + 4 * row gap
+        // Total height: time header + 6 * (panel label + topo) + 5 * row gap
         var totalW = NC * TOPO + (NC - 1) * COL_GAP + CB_GAP + CB_PDF_W;
         var totalH = TIME_H + NR * (PANEL_LABEL_H + TOPO) + (NR - 1) * ROW_GAP;
 
@@ -219,7 +222,7 @@
                   "Topomap PDFs placed : " + placed_count + "\n" +
                   "Colorbar PDFs placed: " + cb_placed    + "\n" +
                   "Time labels         : " + NC           + "\n" +
-                  "Panel labels (a-e)  : " + NR;
+                  "Panel labels (a-f)  : " + NR;
         if (missing.length > 0) {
             msg += "\n\nMissing files (" + missing.length + "):\n";
             msg += missing.slice(0, 10).join("\n");
