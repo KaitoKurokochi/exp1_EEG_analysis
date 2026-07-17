@@ -11,14 +11,15 @@
 //   [PAD]
 //   [ERP row 1: waveform | topomap]
 //   ...
-//   [legend (right-aligned, scaled to match ERP panels)]
+//   [legend (right-aligned, placed at natural size)]
 //   [PAD]
 //
-// Font-size consistency:
-//   ERP panels are scaled to ERP_W (10 cm).  The legend and condition
-//   label are scaled by the same factor (erpScaleFactor) so all text
-//   appears at the same visual size.  LABEL_SIZE is computed without
-//   integer rounding to minimise sub-pixel discrepancy.
+// No-scaling architecture:
+//   MATLAB outputs all PDFs at the exact target size (ERP: 10 x 8 cm,
+//   topomap: 4.5 x 4.5 cm).  This script places them at their natural
+//   size (1:1) — no resize() calls anywhere.  Font sizes in Illustrator
+//   (condition label) are set to FONT_SIZE_LABEL to match the MATLAB
+//   font size used when generating the PDFs.
 //
 // Equal-height boxes:
 //   All condition boxes share the same height regardless of how many
@@ -77,7 +78,7 @@
     var LABEL_AREA       =  1.0 * PT;  // height reserved for condition label at box top
     var LABEL_MARGIN     =  4;         // offset of label text from box corner (pt)
     var GAP_COND         =  1.0 * PT;  // horizontal gap between the two condition boxes
-    var FONT_SIZE_MATLAB = 25;         // MATLAB FontSize used for ERP axes and legend
+    var FONT_SIZE_LABEL  = 16;         // must match font_sz in stat_erp_cbpt.m
 
     var CONTENT_W = ERP_W + GAP_COL + TOPO_W;  // width of one row
 
@@ -114,10 +115,8 @@
     // ------------------------------------------------------------------
     // 8. Place each condition panel
     // ------------------------------------------------------------------
-    var nPlaced        = 0;
-    var nMissing       = 0;
-    var erpScaleFactor = 1.0;
-    var scaleKnown     = false;
+    var nPlaced  = 0;
+    var nMissing = 0;
 
     // Bottom Y of the Go condition box (Illustrator coords: Y increases upward).
     // Saved after Go (ci=0) is processed so that the No-Go box (ci=1) can be
@@ -155,11 +154,9 @@
             if (erpFile.exists) {
                 var erp  = doc.placedItems.add();
                 erp.file = erpFile;
-                var sc   = (ERP_W / erp.width) * 100;
-                erp.resize(sc, sc);
+                // Place at natural size (MATLAB outputs at exactly ERP_W x erp_h_cm)
                 rowH         = erp.height;
                 erp.position = [condX, curY];
-                if (!scaleKnown) { erpScaleFactor = sc / 100; scaleKnown = true; }
                 // Update bounds inline
                 gb = erp.geometricBounds;
                 if (gb[0] < cMinX) { cMinX = gb[0]; }
@@ -177,9 +174,7 @@
             if (topoFile.exists) {
                 var topo  = doc.placedItems.add();
                 topo.file = topoFile;
-                var tsc   = (TOPO_W / topo.width)  * 100;
-                var tsy   = (TOPO_H / topo.height) * 100;
-                topo.resize(tsc, tsy);
+                // Place at natural size (MATLAB outputs at exactly topo_cm x topo_cm)
                 topo.position = [
                     condX + ERP_W + GAP_COL,
                     curY - (rowH - TOPO_H) / 2
@@ -209,7 +204,7 @@
         if (legFile.exists) {
             var leg  = doc.placedItems.add();
             leg.file = legFile;
-            leg.resize(erpScaleFactor * 100, erpScaleFactor * 100);
+            // Place at natural size (MATLAB auto-sizes legend PDF to content)
             // Right-align to content right edge
             leg.position = [condX + CONTENT_W - leg.width, curY];
             // Update bounds inline
@@ -231,9 +226,9 @@
         //   so that all condition boxes share the same height regardless of
         //   how many cluster rows each condition contains.
         //
-        // LABEL_SIZE: use the exact (unrounded) product to minimise the
-        //   sub-pixel discrepancy between the label and the ERP panel text.
-        var LABEL_SIZE = FONT_SIZE_MATLAB * erpScaleFactor;
+        // LABEL_SIZE matches the MATLAB font size so condition label text
+        //   appears at the same visual size as axis labels in the ERP panels.
+        var LABEL_SIZE = FONT_SIZE_LABEL;
         var boxTop    = cMaxY + PAD + LABEL_AREA;
         var boxLeft   = cMinX - PAD;
         var boxWidth  = (cMaxX - cMinX) + 2 * PAD;
@@ -287,9 +282,8 @@
     // ------------------------------------------------------------------
     // 10. Report
     // ------------------------------------------------------------------
-    var msg = "Done. " + nPlaced + " items placed.";
-    msg += "\nERP scale factor: " + erpScaleFactor.toFixed(3);
-    msg += "\nLabel font size: " + Math.round(FONT_SIZE_MATLAB * erpScaleFactor) + " pt";
+    var msg = "Done. " + nPlaced + " items placed (no scaling — all PDFs at natural size).";
+    msg += "\nLabel font size: " + FONT_SIZE_LABEL + " pt";
     if (nMissing > 0) {
         msg += "\n" + nMissing + " file(s) not found in:\n" + folder.fullName;
     }

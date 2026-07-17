@@ -464,13 +464,14 @@ ind_dir          = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual'
 if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
 
 alpha      = 0.05;
-% erp_canvas_cm: rendering canvas for ERP figures (NOT the output size).
-% A generous canvas gives the MATLAB layout engine enough room to compute
-% correct text extents even in Visible='off' mode.  The actual PDF size
-% is determined by exportgraphics from the axes tight bounding box.
-erp_canvas_w = 16.0;  % cm
-erp_canvas_h = 12.0;  % cm
-topo_cm      =  4.5;  % topomap output size (cm, square)
+% Output dimensions for individual PDF files.
+% All sizes are the FINAL output size; Illustrator places these PDFs at 1:1
+% (no scaling).  font_sz is chosen to match the current visual appearance
+% (old approach: 25 pt on a ~15.9 cm tight-box scaled to 10 cm → ~16 pt).
+erp_w_cm = 10.0;  % ERP panel output width  (cm)
+erp_h_cm =  8.0;  % ERP panel output height (cm, fixed for uniform row heights)
+topo_cm  =  4.5;  % topomap output size     (cm, square)
+font_sz  = 16;    % axis/label font size    (pt)
 
 col_exp = [0.00, 0.45, 0.74];
 col_nov = [0.85, 0.33, 0.10];
@@ -524,16 +525,13 @@ for ci = 1:length(conditions)
             y_hi  = max(y_all) + pad_y;
 
             % ---- ERP waveform panel (vector PDF) --------------------------------
-            % The figure is a rendering canvas only.  A generous size
-            % (erp_canvas_w x erp_canvas_h) ensures MATLAB's layout engine
-            % computes correct text extents in Visible='off' mode.
-            % exportgraphics(ax_erp, ...) then produces a PDF whose page
-            % dimensions equal the tight bounding box of the axes content
-            % (plot area + tick labels + axis labels + legend).
-            % The output height therefore adapts dynamically to the
-            % amplitude range of each cluster waveform.
+            % Figure size = final output size (erp_w_cm x erp_h_cm).
+            % exportgraphics(fig_erp, ...) captures the full figure so the
+            % PDF page is exactly erp_w_cm x erp_h_cm — no scaling needed
+            % when placing in Illustrator.  All panels share the same size,
+            % giving uniform row heights in the assembled figure.
             fig_erp = figure('Visible', 'off', 'Units', 'centimeters', ...
-                'Position', [0, 0, erp_canvas_w, erp_canvas_h]);
+                'Position', [0, 0, erp_w_cm, erp_h_cm]);
             ax_erp = axes(fig_erp); %#ok<LAXES>
             hold on;
 
@@ -558,17 +556,13 @@ for ci = 1:length(conditions)
 
             xlim([t_erp(1), t_erp(end)]);
             ylim([y_lo, y_hi]);
-            xlabel('Time (s)', 'FontSize', 25);
-            ylabel('\muV',     'FontSize', 25);
-            set(ax_erp, 'FontSize', 25, 'TickDir', 'out', 'Box', 'off');
+            xlabel('Time (s)', 'FontSize', font_sz);
+            ylabel('\muV',     'FontSize', font_sz);
+            set(ax_erp, 'FontSize', font_sz, 'TickDir', 'out', 'Box', 'off');
 
-            % Export the axes object directly.  MATLAB's exportgraphics
-            % resolves the tight bounding box of ax_erp — including tick
-            % labels, xlabel/ylabel, and the associated legend — via the
-            % actual renderer, independent of the figure canvas size.
-            % No manual TightInset repositioning is necessary.
+            % Export the full figure.  PDF page = erp_w_cm x erp_h_cm exactly.
             fname_erp = fullfile(ind_dir, [tag, '_erp.pdf']);
-            exportgraphics(ax_erp, fname_erp, 'ContentType', 'vector');
+            exportgraphics(fig_erp, fname_erp, 'ContentType', 'vector');
             close(fig_erp);
 
             % ---- Topomap panel (vector PDF, 4.5 x 4.5 cm) ------------------
@@ -609,11 +603,12 @@ fprintf('Saved individual PDFs to:\n  %s\n', ind_dir);
 clear;
 config;
 
-ind_dir = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual');
+ind_dir  = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual');
 if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
 
-col_exp = [0.00, 0.45, 0.74];
-col_nov = [0.85, 0.33, 0.10];
+col_exp  = [0.00, 0.45, 0.74];
+col_nov  = [0.85, 0.33, 0.10];
+font_sz  = 16;  % must match the value used in the individual ERP panel section
 
 % Use a generous canvas so MATLAB can resolve legend text extents
 % in Visible='off' mode; figure is resized to the legend's actual size below.
@@ -624,7 +619,7 @@ hold(ax_leg, 'on');
 h_e = plot(ax_leg, NaN, NaN, '-', 'Color', col_exp, 'LineWidth', 2.0);
 h_n = plot(ax_leg, NaN, NaN, '-', 'Color', col_nov, 'LineWidth', 2.0);
 lgd = legend(ax_leg, [h_e, h_n], {'Experienced', 'Novice'}, ...
-    'Orientation', 'vertical', 'FontSize', 25, 'Box', 'off', ...
+    'Orientation', 'vertical', 'FontSize', font_sz, 'Box', 'off', ...
     'Location', 'best');
 
 % Force rendering so legend Position reflects actual content extents
