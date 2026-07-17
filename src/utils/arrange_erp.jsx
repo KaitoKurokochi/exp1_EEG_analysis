@@ -17,7 +17,14 @@
 // Font-size consistency:
 //   ERP panels are scaled to ERP_W (10 cm).  The legend and condition
 //   label are scaled by the same factor (erpScaleFactor) so all text
-//   appears at the same visual size.
+//   appears at the same visual size.  LABEL_SIZE is computed without
+//   integer rounding to minimise sub-pixel discrepancy.
+//
+// Equal-height boxes:
+//   All condition boxes share the same height regardless of how many
+//   cluster rows each condition has.  The Go (ci=0) box bottom is saved
+//   as goBoxBottom and applied to subsequent conditions when their
+//   natural bottom would be higher (i.e. fewer rows).
 //
 // Bounds tracking:
 //   Bounding box per condition is updated INLINE immediately after each
@@ -111,6 +118,11 @@
     var nMissing       = 0;
     var erpScaleFactor = 1.0;
     var scaleKnown     = false;
+
+    // Bottom Y of the Go condition box (Illustrator coords: Y increases upward).
+    // Saved after Go (ci=0) is processed so that the No-Go box (ci=1) can be
+    // extended downward to match, regardless of how many rows No-Go has.
+    var goBoxBottom = null;
 
     // Reusable geometricBounds variable
     var gb;
@@ -215,12 +227,25 @@
         // boxTop = content top + PAD + LABEL_AREA
         //   PAD:        standard inner padding above the topmost content item
         //   LABEL_AREA: extra space reserved for the condition label
-        // boxBottom = content bottom - PAD
-        var LABEL_SIZE = Math.round(FONT_SIZE_MATLAB * erpScaleFactor);
+        // boxBottom = content bottom - PAD, but extended to match Go's depth
+        //   so that all condition boxes share the same height regardless of
+        //   how many cluster rows each condition contains.
+        //
+        // LABEL_SIZE: use the exact (unrounded) product to minimise the
+        //   sub-pixel discrepancy between the label and the ERP panel text.
+        var LABEL_SIZE = FONT_SIZE_MATLAB * erpScaleFactor;
         var boxTop    = cMaxY + PAD + LABEL_AREA;
         var boxLeft   = cMinX - PAD;
         var boxWidth  = (cMaxX - cMinX) + 2 * PAD;
-        var boxHeight = (cMaxY - cMinY) + 2 * PAD + LABEL_AREA;
+
+        // Bottom edge Y of the border box (Illustrator: lower Y = further down).
+        var boxBottom = cMinY - PAD;
+        if (ci === 0) {
+            goBoxBottom = boxBottom;           // save Go's bottom for later conditions
+        } else if (goBoxBottom !== null && goBoxBottom < boxBottom) {
+            boxBottom = goBoxBottom;           // extend No-Go box to match Go's depth
+        }
+        var boxHeight = boxTop - boxBottom;
 
         var borderRect = doc.pathItems.rectangle(
             boxTop, boxLeft, boxWidth, boxHeight
