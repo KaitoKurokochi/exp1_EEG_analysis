@@ -265,8 +265,8 @@ alpha        = 0.05;
 % A generous canvas gives the MATLAB layout engine enough room to compute
 % correct text extents in Visible='off' mode.  The actual PDF page size is
 % determined dynamically (see "dynamic sizing" block below).
-erp_canvas_w = 12.0;  % cm — rendering canvas width  (reduce to make font larger relative to graph)
-erp_canvas_h =  9.0;  % cm — rendering canvas height
+erp_canvas_w = 10.0;  % cm — rendering canvas width  (reduce to make font larger relative to graph)
+erp_canvas_h =  7.5;  % cm — rendering canvas height
 topo_cm      =  4.5;  % topomap output size (cm, square)
 font_sz      = 16;    % axis/label font size (pt)
 

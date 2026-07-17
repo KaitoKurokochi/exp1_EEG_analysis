@@ -86,6 +86,7 @@
     var LABEL_AREA       =  1.0 * PT;  // height reserved for condition label at box top
     var LABEL_MARGIN     =  4;         // offset of label text from box corner (pt)
     var GAP_COND         =  1.0 * PT;  // horizontal gap between the two condition boxes
+    var OUTER_MARGIN     =  0.15 * PT; // outer margin added around all content to prevent border clipping
     var FONT_SIZE_LABEL  = 16;         // must match font_sz in stat_erp_cbpt.m
 
     var CONTENT_W = ERP_W + GAP_COL + TOPO_W;  // width of one row
@@ -271,7 +272,7 @@
         var strokeCol      = new RGBColor();
         strokeCol.red = 0; strokeCol.green = 0; strokeCol.blue = 0;
         borderRect.strokeColor = strokeCol;
-        borderRect.strokeWidth = 1.0;
+        borderRect.strokeWidth = 2.0;
 
         // ---- Add condition label (bold, upper-left inside LABEL_AREA zone) ----
         var textItem = doc.textFrames.add();
@@ -298,7 +299,7 @@
         if (gb2[2] > abMaxX) { abMaxX = gb2[2]; }
         if (gb2[3] < abMinY) { abMinY = gb2[3]; }
     }
-    doc.artboards[0].artboardRect = [abMinX, abMaxY, abMaxX, abMinY];
+    doc.artboards[0].artboardRect = [abMinX - OUTER_MARGIN, abMaxY + OUTER_MARGIN, abMaxX + OUTER_MARGIN, abMinY - OUTER_MARGIN];
 
     // ------------------------------------------------------------------
     // 10. Report

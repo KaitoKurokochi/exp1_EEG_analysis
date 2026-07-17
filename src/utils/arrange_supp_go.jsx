@@ -33,6 +33,10 @@
     // ------------------------------------------------------------------
     // 1.  Select source folder FIRST (before touching the document)
     // ------------------------------------------------------------------
+    // NOTE (Windows): the folder browser dialog may open behind Illustrator.
+    //   If nothing appears after clicking OK below, check the taskbar.
+    alert("arrange_supp_go: スクリプト開始\n\n次のダイアログでフォルダを選択してください。\n（ダイアログがタスクバーに隠れている場合があります）");
+
     var folder = Folder.selectDialog(
         "Select the 'go_individual' folder  (result/fig_freq_overview_topo/go_individual)"
     );
@@ -92,8 +96,8 @@
         var TIME_FONT  = 20;   // pt — time-axis labels
 
         // ---- row / column metadata ------------------------------------
-        var ROW_NAMES  = ["delta", "Theta", "alpha", "beta", "Low_gamma", "High_gamma"];
-        var ROW_LABELS = ["delta", "theta", "alpha", "beta", "low-gamma", "high-gamma"];
+        var ROW_NAMES  = ["Theta", "alpha", "beta", "Low_gamma", "High_gamma"];
+        var ROW_LABELS = ["theta", "alpha", "beta", "low-gamma", "high-gamma"];
         var TIMES_MS   = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
         var NR = ROW_NAMES.length;   // 6
