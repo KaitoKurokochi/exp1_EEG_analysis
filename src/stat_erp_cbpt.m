@@ -560,6 +560,14 @@ for ci = 1:length(conditions)
             ylabel('\muV',     'FontSize', font_sz);
             set(ax_erp, 'FontSize', font_sz, 'TickDir', 'out', 'Box', 'off');
 
+            % Minimise the MATLAB default right/top margins so the ERP content
+            % sits close to the right edge of the 10 cm figure.
+            % Left (0.15) and bottom (0.14) retain adequate space for ylabel +
+            % tick labels at font_sz=16 pt.  Right (0.04 = 0.4 cm) is just
+            % enough for the rightmost tick label to not be clipped.
+            ax_erp.ActivePositionProperty = 'position';
+            ax_erp.Position = [0.15, 0.14, 0.81, 0.80];
+
             % Export the full figure.  PDF page = erp_w_cm x erp_h_cm exactly.
             fname_erp = fullfile(ind_dir, [tag, '_erp.pdf']);
             exportgraphics(fig_erp, fname_erp, 'ContentType', 'vector');
@@ -585,6 +593,13 @@ for ci = 1:length(conditions)
             cfg_t.highlightsize      = 8;
             cfg_t.highlightlinewidth = 1.5;
             ft_topoplotER(cfg_t, tmp_stat);
+
+            % Fill the figure with the topomap axes to eliminate MATLAB's
+            % default axes margins (~13 % on each side at default position).
+            % ft_topoplotER uses axis('image') + axis('off'), so no tick labels
+            % or titles extend beyond the axes boundary; Position [0,0,1,1]
+            % is safe.  A 1 % inset is kept as a precaution against clipping.
+            set(gca, 'Position', [0.01, 0.01, 0.98, 0.98]);
 
             fname_topo = fullfile(ind_dir, [tag, '_topo.pdf']);
             exportgraphics(fig_topo, fname_topo, 'ContentType', 'vector');

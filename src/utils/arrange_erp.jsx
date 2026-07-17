@@ -71,10 +71,11 @@
     var ERP_W            = 10.0 * PT;  // ERP panel target width
     var TOPO_W           =  4.5 * PT;  // topomap width
     var TOPO_H           =  4.5 * PT;  // topomap height
-    var GAP_COL          =  0.3 * PT;  // gap between ERP and topo within a row
+    var GAP_COL          =  0.1 * PT;  // gap between ERP and topo within a row (reduced from 0.3)
     var GAP_ROW          =  0.5 * PT;  // gap between rows
     var GAP_LEG          =  0.3 * PT;  // gap between last row and legend
-    var PAD              =  0.8 * PT;  // padding inside border box (left/right/bottom)
+    var PAD              =  0.8 * PT;  // padding inside border box (left / right / top)
+    var PAD_BOTTOM       =  0.4 * PT;  // bottom padding inside border box (separate to allow independent tuning)
     var LABEL_AREA       =  1.0 * PT;  // height reserved for condition label at box top
     var LABEL_MARGIN     =  4;         // offset of label text from box corner (pt)
     var GAP_COND         =  1.0 * PT;  // horizontal gap between the two condition boxes
@@ -234,7 +235,9 @@
         var boxWidth  = (cMaxX - cMinX) + 2 * PAD;
 
         // Bottom edge Y of the border box (Illustrator: lower Y = further down).
-        var boxBottom = cMinY - PAD;
+        // PAD_BOTTOM (0.4 cm) is used instead of PAD (0.8 cm) to give a tighter
+        // bottom margin below the legend while keeping left/right/top margins at PAD.
+        var boxBottom = cMinY - PAD_BOTTOM;
         if (ci === 0) {
             goBoxBottom = boxBottom;           // save Go's bottom for later conditions
         } else if (goBoxBottom !== null && goBoxBottom < boxBottom) {
