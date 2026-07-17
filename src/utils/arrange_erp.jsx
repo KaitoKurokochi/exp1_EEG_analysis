@@ -129,11 +129,11 @@
     var legFile = new File(legPath);
 
     if (legFile.exists) {
-        var leg   = doc.placedItems.add();
-        leg.file  = legFile;
-        var legSc = (CONTENT_W / leg.width) * 100;
-        leg.resize(legSc, legSc);
-        leg.position = [x0, curY];
+        var leg  = doc.placedItems.add();
+        leg.file = legFile;
+        // Place at natural PDF size (no scaling).
+        // Right-align: position left edge so right edge meets content right edge.
+        leg.position = [x0 + CONTENT_W - leg.width, curY];
         curY -= leg.height;
         nPlaced++;
     } else {
