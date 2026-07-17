@@ -558,8 +558,8 @@ for ci = 1:length(conditions)
 
             xlim([t_erp(1), t_erp(end)]);
             ylim([y_lo, y_hi]);
-            xlabel('Time (s)', 'FontSize', 20);
-            ylabel('\muV',     'FontSize', 20);
+            xlabel('Time (s)', 'FontSize', 25);
+            ylabel('\muV',     'FontSize', 25);
             set(ax_erp, 'FontSize', 25, 'TickDir', 'out', 'Box', 'off');
 
             % Export the axes object directly.  MATLAB's exportgraphics
