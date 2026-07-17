@@ -454,7 +454,14 @@ data_rt_dir      = fullfile(prj_dir, 'result', 'stat_rt');
 ind_dir          = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual');
 if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
 
-alpha      = 0.05;
+alpha        = 0.05;
+% erp_canvas_*: rendering canvas for ERP figures (NOT the output size).
+% A generous canvas gives the MATLAB layout engine enough room to compute
+% correct text extents in Visible='off' mode.  The actual PDF page size is
+% determined dynamically (see "dynamic sizing" block below).
+erp_canvas_w = 16.0;  % cm — rendering canvas width
+erp_canvas_h = 12.0;  % cm — rendering canvas height
+topo_cm      =  4.5;  % topomap output size (cm, square)
 font_sz      = 16;    % axis/label font size (pt)
 
 col_exp = [0.00, 0.45, 0.74];
@@ -539,15 +546,38 @@ for ci = 1:length(conditions)
             ylabel('\muV',     'FontSize', font_sz);
             set(ax_erp, 'FontSize', font_sz, 'TickDir', 'out', 'Box', 'off');
 
-            % Minimise the MATLAB default right/top margins so the ERP content
-            % sits close to the right edge of the 10 cm figure.
-            % Left (0.15) and bottom (0.14) retain adequate space for ylabel +
-            % tick labels at font_sz=16 pt.  Right (0.04 = 0.4 cm) is just
-            % enough for the rightmost tick label to not be clipped.
-            ax_erp.ActivePositionProperty = 'position';
-            ax_erp.Position = [0.15, 0.14, 0.81, 0.80];
+            % ---- Dynamic sizing (same approach as legend PDF) ----------------
+            % 1. Force render so TightInset reflects the actual content extents.
+            drawnow;
 
-            % Export the full figure.  PDF page = erp_w_cm x erp_h_cm exactly.
+            % 2. Read tight bounding box in physical units (cm).
+            fig_erp.Units = 'centimeters';
+            fig_w = fig_erp.Position(3);   % = erp_canvas_w
+            fig_h = fig_erp.Position(4);   % = erp_canvas_h
+            ax_erp.Units = 'normalized';   % guard: ensure TightInset is normalized
+            ti = ax_erp.TightInset;        % [left, bottom, right, top] normalized
+            ap = ax_erp.Position;          % [left, bottom, width, height] normalized
+
+            left_cm   = ti(1) * fig_w;
+            bottom_cm = ti(2) * fig_h;
+            axes_w_cm = ap(3) * fig_w;
+            axes_h_cm = ap(4) * fig_h;
+            right_cm  = ti(3) * fig_w;
+            top_cm    = ti(4) * fig_h;
+
+            out_w = left_cm + axes_w_cm + right_cm;   % total content width
+            out_h = bottom_cm + axes_h_cm + top_cm;   % total content height
+
+            % 3. Resize figure to the exact content footprint.
+            fig_erp.Position(3:4) = [out_w, out_h];
+
+            % 4. Reposition axes to fill the resized figure with zero dead margin.
+            ax_erp.ActivePositionProperty = 'position';
+            ax_erp.Position = [left_cm/out_w, bottom_cm/out_h, ...
+                               axes_w_cm/out_w, axes_h_cm/out_h];
+            % ---- end dynamic sizing -----------------------------------------
+
+            % Export full figure.  PDF page = out_w x out_h (content size).
             fname_erp = fullfile(ind_dir, [tag, '_erp.pdf']);
             exportgraphics(fig_erp, fname_erp, 'ContentType', 'vector');
             close(fig_erp);
