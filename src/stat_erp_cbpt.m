@@ -306,7 +306,7 @@ for ci = 1:length(conditions)
         end
 
         for cli = 1:length(clusters)
-            if clusters(cli).prob >= alpha, break; end
+            if clusters(cli).prob >= alpha, continue; end
 
             fpath = fullfile(data_cluster_dir, [cond, '_', pol, '_', num2str(cli), '.mat']);
             if ~exist(fpath, 'file'), continue; end
@@ -484,7 +484,7 @@ for ci = 1:length(conditions)
         end
 
         for cli = 1:length(clusters)
-            if clusters(cli).prob >= alpha, break; end
+            if clusters(cli).prob >= alpha, continue; end
 
             fpath = fullfile(data_cluster_dir, [cond, '_', pol, '_', num2str(cli), '.mat']);
             if ~exist(fpath, 'file'), continue; end
