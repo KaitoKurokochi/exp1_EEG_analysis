@@ -58,7 +58,7 @@
     var TOPO_H        =  4.5 * PT;  // topomap target height
     var GAP_COL       =  0.3 * PT;  // horizontal gap between ERP and topo
     var GAP_ROW       =  0.5 * PT;  // vertical gap between rows
-    var GAP_LEG       =  0.8 * PT;  // gap between last row and legend
+    var GAP_LEG       =  0.3 * PT;  // gap between last row and legend
     var PAD           =  0.8 * PT;  // padding inside border box
     var LABEL_SIZE    = 14;         // condition label font size (pt)
     var LABEL_MARGIN  =  4;         // offset of label from box corner (pt)
@@ -123,6 +123,10 @@
     // ------------------------------------------------------------------
     // 8. Place legend below the stack
     // ------------------------------------------------------------------
+    // The loop always appends GAP_ROW after the last row as well, so curY
+    // is already GAP_ROW below the last row's bottom edge.  Cancel that
+    // trailing gap first, then apply only GAP_LEG as the legend spacing.
+    curY += GAP_ROW;
     curY -= GAP_LEG;
 
     var legPath = folder.fullName + "/legend.pdf";
