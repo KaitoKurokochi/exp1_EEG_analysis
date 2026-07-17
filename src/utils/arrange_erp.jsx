@@ -19,6 +19,12 @@
 //   label are scaled by the same factor (erpScaleFactor) so all text
 //   appears at the same visual size.
 //
+// Bounds tracking:
+//   Bounding box per condition is updated INLINE immediately after each
+//   item is positioned.  This avoids reliance on doc.pageItems ordering
+//   (Illustrator inserts new items at index 0, making index-based
+//   tracking unreliable across two conditions).
+//
 // Source folder: result/fig_stat_erp_cbpt/individual/
 
 (function () {
@@ -106,21 +112,25 @@
     var erpScaleFactor = 1.0;
     var scaleKnown     = false;
 
+    // Reusable geometricBounds variable
+    var gb;
+
     for (var ci = 0; ci < conditions.length; ci++) {
         var cond = conditions[ci];
         var tags = cond.tags;
 
         // X origin for this condition.
-        // Each box occupies (CONTENT_W + 2*PAD); GAP_COND separates boxes.
+        // Each box occupies approximately (CONTENT_W + 2*PAD); GAP_COND separates boxes.
         var condX = x0 + ci * (CONTENT_W + 2 * PAD + GAP_COND);
 
         // Content starts PAD below the artboard top.
-        // LABEL_AREA is added to the box top after content bounds are known,
-        // so no extra offset is needed here.
         var curY = y0 - PAD;
 
-        // Record item count before placing this condition (for bounds tracking)
-        var idxStart = doc.pageItems.length;
+        // Per-condition bounding box, updated inline after each item is positioned.
+        // This is the only reliable approach because doc.pageItems is ordered
+        // newest-first, making index-based tracking wrong for the second condition.
+        var cMinX =  1e9, cMaxX = -1e9;
+        var cMaxY = -1e9, cMinY =  1e9;
 
         // ---- Place ERP + topomap rows ----
         for (var i = 0; i < tags.length; i++) {
@@ -138,6 +148,12 @@
                 rowH         = erp.height;
                 erp.position = [condX, curY];
                 if (!scaleKnown) { erpScaleFactor = sc / 100; scaleKnown = true; }
+                // Update bounds inline
+                gb = erp.geometricBounds;
+                if (gb[0] < cMinX) { cMinX = gb[0]; }
+                if (gb[1] > cMaxY) { cMaxY = gb[1]; }
+                if (gb[2] > cMaxX) { cMaxX = gb[2]; }
+                if (gb[3] < cMinY) { cMinY = gb[3]; }
                 nPlaced++;
             } else {
                 nMissing++;
@@ -156,6 +172,12 @@
                     condX + ERP_W + GAP_COL,
                     curY - (rowH - TOPO_H) / 2
                 ];
+                // Update bounds inline
+                gb = topo.geometricBounds;
+                if (gb[0] < cMinX) { cMinX = gb[0]; }
+                if (gb[1] > cMaxY) { cMaxY = gb[1]; }
+                if (gb[2] > cMaxX) { cMaxX = gb[2]; }
+                if (gb[3] < cMinY) { cMinY = gb[3]; }
                 nPlaced++;
             } else {
                 nMissing++;
@@ -178,22 +200,15 @@
             leg.resize(erpScaleFactor * 100, erpScaleFactor * 100);
             // Right-align to content right edge
             leg.position = [condX + CONTENT_W - leg.width, curY];
-            curY -= leg.height;
-            nPlaced++;
-        } else {
-            nMissing++;
-        }
-
-        // ---- Compute bounding box of this condition's items only ----
-        var allItems = doc.pageItems;
-        var cMinX =  1e9, cMaxX = -1e9;
-        var cMaxY = -1e9, cMinY =  1e9;
-        for (var j = idxStart; j < allItems.length; j++) {
-            var gb = allItems[j].geometricBounds;  // [left, top, right, bottom]
+            // Update bounds inline
+            gb = leg.geometricBounds;
             if (gb[0] < cMinX) { cMinX = gb[0]; }
             if (gb[1] > cMaxY) { cMaxY = gb[1]; }
             if (gb[2] > cMaxX) { cMaxX = gb[2]; }
             if (gb[3] < cMinY) { cMinY = gb[3]; }
+            nPlaced++;
+        } else {
+            nMissing++;
         }
 
         // ---- Draw border box ----
