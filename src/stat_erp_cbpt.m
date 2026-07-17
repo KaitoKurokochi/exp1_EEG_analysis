@@ -443,16 +443,7 @@ for ci = 1:length(conditions)
 end
 
 %% save individual ERP and topomap PDFs (vector, Illustrator-ready)
-% Saves each qualified cluster as two separate PDFs:
-%   <cond>_<pol>_<cli>_erp.pdf  — ERP waveform panel.
-%       The figure is a rendering canvas only; the PDF is sized to the
-%       tight bounding box of the axes content (plot area + tick labels +
-%       axis labels + legend) via exportgraphics(ax_erp, ...).
-%       No fixed output height: the height adjusts automatically to the
-%       waveform amplitude range of each cluster.
-%   <cond>_<pol>_<cli>_topo.pdf — scalp topomap (topo_cm x topo_cm, vector)
-% Output directory: result/fig_stat_erp_cbpt/individual/
-% Use arrange_erp.jsx to assemble these into the final Illustrator figure.
+
 clear;
 config;
 
@@ -464,14 +455,7 @@ ind_dir          = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'individual'
 if ~exist(ind_dir, 'dir'), mkdir(ind_dir); end
 
 alpha      = 0.05;
-% Output dimensions for individual PDF files.
-% All sizes are the FINAL output size; Illustrator places these PDFs at 1:1
-% (no scaling).  font_sz is chosen to match the current visual appearance
-% (old approach: 25 pt on a ~15.9 cm tight-box scaled to 10 cm → ~16 pt).
-erp_w_cm = 10.0;  % ERP panel output width  (cm)
-erp_h_cm =  8.0;  % ERP panel output height (cm, fixed for uniform row heights)
-topo_cm  =  4.5;  % topomap output size     (cm, square)
-font_sz  = 16;    % axis/label font size    (pt)
+font_sz      = 16;    % axis/label font size (pt)
 
 col_exp = [0.00, 0.45, 0.74];
 col_nov = [0.85, 0.33, 0.10];
@@ -525,13 +509,8 @@ for ci = 1:length(conditions)
             y_hi  = max(y_all) + pad_y;
 
             % ---- ERP waveform panel (vector PDF) --------------------------------
-            % Figure size = final output size (erp_w_cm x erp_h_cm).
-            % exportgraphics(fig_erp, ...) captures the full figure so the
-            % PDF page is exactly erp_w_cm x erp_h_cm — no scaling needed
-            % when placing in Illustrator.  All panels share the same size,
-            % giving uniform row heights in the assembled figure.
             fig_erp = figure('Visible', 'off', 'Units', 'centimeters', ...
-                'Position', [0, 0, erp_w_cm, erp_h_cm]);
+                'Position', [0, 0, erp_canvas_w, erp_canvas_h]);
             ax_erp = axes(fig_erp); %#ok<LAXES>
             hold on;
 
