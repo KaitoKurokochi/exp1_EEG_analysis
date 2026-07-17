@@ -6,6 +6,13 @@
 //            legend.pdf placed below the stack,
 //            bordered box with condition label in the upper-left corner.
 //
+// Font-size consistency note:
+//   ERP panels are scaled down to ERP_W (10 cm) in Illustrator.
+//   The legend is scaled by the same factor (erpScaleFactor) so that
+//   its text appears at the same visual size as the ERP panel labels.
+//   The condition label font size is also set to 25 * erpScaleFactor
+//   so it matches the legend visually.
+//
 // Run separately for Go and No-Go conditions.
 // Source folder: result/fig_stat_erp_cbpt/individual/
 
@@ -52,16 +59,17 @@
     // ------------------------------------------------------------------
     // 5. Layout constants (1 cm = 28.3465 pt)
     // ------------------------------------------------------------------
-    var PT            = 28.3465;
-    var ERP_W         = 10.0 * PT;  // ERP panel target width (uniform scale)
-    var TOPO_W        =  4.5 * PT;  // topomap target width
-    var TOPO_H        =  4.5 * PT;  // topomap target height
-    var GAP_COL       =  0.3 * PT;  // horizontal gap between ERP and topo
-    var GAP_ROW       =  0.5 * PT;  // vertical gap between rows
-    var GAP_LEG       =  0.3 * PT;  // gap between last row and legend
-    var PAD           =  0.8 * PT;  // padding inside border box
-    var LABEL_SIZE    = 14;         // condition label font size (pt)
-    var LABEL_MARGIN  =  4;         // offset of label from box corner (pt)
+    var PT           = 28.3465;
+    var ERP_W        = 10.0 * PT;  // ERP panel target width (uniform scale)
+    var TOPO_W       =  4.5 * PT;  // topomap target width
+    var TOPO_H       =  4.5 * PT;  // topomap target height
+    var GAP_COL      =  0.3 * PT;  // horizontal gap between ERP and topo
+    var GAP_ROW      =  0.5 * PT;  // vertical gap between rows
+    var GAP_LEG      =  0.3 * PT;  // gap between last row and legend
+    var PAD          =  0.8 * PT;  // padding inside border box
+    var LABEL_MARGIN =  4;         // offset of label from box corner (pt)
+    // LABEL_SIZE and erpScaleFactor are set after the ERP loop below,
+    // because erpScaleFactor = ERP_W / erp.width depends on the actual PDF.
 
     var CONTENT_W = ERP_W + GAP_COL + TOPO_W;  // total width of one row
 
@@ -73,10 +81,11 @@
     var curY = ab[1] - PAD;
 
     // ------------------------------------------------------------------
-    // 7. Place ERP + topomap rows
+    // 7. Place ERP + topomap rows; capture ERP scale factor from first panel
     // ------------------------------------------------------------------
-    var nPlaced  = 0;
-    var nMissing = 0;
+    var nPlaced       = 0;
+    var nMissing      = 0;
+    var erpScaleFactor = 1.0;  // updated from first placed ERP panel
 
     for (var i = 0; i < TAGS.length; i++) {
         var tag  = TAGS[i];
@@ -89,10 +98,14 @@
         if (erpFile.exists) {
             var erp  = doc.placedItems.add();
             erp.file = erpFile;
-            var sc   = (ERP_W / erp.width) * 100;  // uniform scale
+            var sc   = (ERP_W / erp.width) * 100;  // uniform scale to ERP_W
             erp.resize(sc, sc);
             rowH         = erp.height;
             erp.position = [x0, curY];
+            // Capture scale factor from the first placed ERP panel.
+            // All panels in the same condition share the same canvas size
+            // and axis layout, so their widths (and scale factors) are equal.
+            if (i === 0) { erpScaleFactor = sc / 100; }
             nPlaced++;
         } else {
             nMissing++;
@@ -120,6 +133,12 @@
         curY -= rowH + GAP_ROW;
     }
 
+    // Now that erpScaleFactor is known, derive font sizes for legend and label.
+    // The legend PDF was produced with FontSize 25 in MATLAB.  Applying
+    // erpScaleFactor here makes the legend text appear at the same visual
+    // size as the ERP panel axis labels.
+    var LABEL_SIZE = Math.round(25 * erpScaleFactor);  // matches legend visually
+
     // ------------------------------------------------------------------
     // 8. Place legend below the stack
     // ------------------------------------------------------------------
@@ -135,7 +154,9 @@
     if (legFile.exists) {
         var leg  = doc.placedItems.add();
         leg.file = legFile;
-        // Place at natural PDF size (no scaling).
+        // Apply the same scale factor as ERP panels so legend text size
+        // matches the ERP axis labels visually.
+        leg.resize(erpScaleFactor * 100, erpScaleFactor * 100);
         // Right-align: position left edge so right edge meets content right edge.
         leg.position = [x0 + CONTENT_W - leg.width, curY];
         curY -= leg.height;
@@ -183,7 +204,7 @@
     // ------------------------------------------------------------------
     // 11. Add condition label in upper-left corner
     // ------------------------------------------------------------------
-    var condLabel = isGo ? "Go" : "No-Go";
+    var condLabel = isGo ? "Go condition" : "No-Go condition";
     var textItem  = doc.textFrames.add();
     textItem.contents = condLabel;
     var charAttr  = textItem.textRange.characterAttributes;
@@ -215,6 +236,8 @@
     // ------------------------------------------------------------------
     var cond = isGo ? "Go" : "No-Go";
     var msg  = cond + " condition: " + nPlaced + " items placed.";
+    msg += "\nERP scale factor: " + erpScaleFactor.toFixed(3);
+    msg += "\nLabel / legend font size: " + LABEL_SIZE + " pt";
     if (nMissing > 0) {
         msg += "\n" + nMissing + " file(s) not found in:\n" + folder.fullName;
     }
