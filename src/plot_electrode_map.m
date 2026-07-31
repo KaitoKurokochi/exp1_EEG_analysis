@@ -3,12 +3,12 @@
 %
 % Rendering approach:
 %   ft_topoplotER (style='blank', marker='off') is used to draw the head
-%   outline (circle, nose, ears) via the easycapM11 layout.
+%   outline (circle, nose, ears) via the ANT waveguard 64ch layout.
 %   Electrode circles and labels are then overlaid on the resulting axes
 %   using coordinates extracted from the same layout.
 %
 % Electrode configuration:
-%   - Active channels (n = 63): 10-20 extended system, easycapM11 cap
+%   - Active channels (n = 63): 10-20 extended system, ANT waveguard 64ch cap
 %   - Reference electrode (CPz): re-referenced offline; shown in blue
 %   - Ground electrode (AFz): shown in gray
 %
@@ -22,25 +22,68 @@ clear; clc;
 
 prj_dir = 'C:\Users\kaito\workspace\exp1_EEG_analysis';
 
+% Active EEG channels used in exp1 (63 recording channels + CPz + AFz)
+active_channels = { ...
+    'Fp1','Fp2','Fpz', ...
+    'AF3','AF4','AF7','AF8', ...
+    'F1','F2','F3','F4','F5','F6','F7','F8','Fz', ...
+    'FC1','FC2','FC3','FC4','FC5','FC6','FCz', ...
+    'FT7','FT8', ...
+    'C1','C2','C3','C4','C5','C6','Cz', ...
+    'T7','T8', ...
+    'CP1','CP2','CP3','CP4','CP5','CP6', ...
+    'TP7','TP8', ...
+    'P1','P2','P3','P4','P5','P6','P7','P8','Pz', ...
+    'PO3','PO4','PO5','PO6','PO7','PO8','POz', ...
+    'O1','O2','Oz', ...
+    'CPz','AFz' ...
+};
+
 % -------------------------------------------------------------------------
-% 1. Load easycapM11 layout and extract electrode positions
+% 1. Load ANT waveguard 64ch layout and extract electrode positions.
+%    cfg_layout.channel restricts the layout to active channels so that
+%    the internal position scaling in ft_prepare_layout uses the same
+%    channel subset as ft_topoplotER will use later.
 % -------------------------------------------------------------------------
-cfg_layout        = [];
-cfg_layout.layout = 'easycapM11.mat';
+cfg_layout         = [];
+cfg_layout.layout  = 'standard_waveguard64_1005_rotated.elc';
+cfg_layout.channel = active_channels;
 layout = ft_prepare_layout(cfg_layout);
 
-% Exclude FieldTrip pseudo-channels (COMNT, SCALE)
-is_pseudo     = ismember(layout.label, {'COMNT', 'SCALE'});
-layout_labels = layout.label(~is_pseudo);
-layout_pos    = layout.pos(~is_pseudo, :);
+% Remove pseudo-channels (COMNT, SCALE) from the layout struct so they
+% are absent from both the manual drawing and the ft_topoplotER call.
+is_pseudo = ismember(layout.label, {'COMNT', 'SCALE'});
+layout.label  = layout.label(~is_pseudo);
+layout.pos    = layout.pos(~is_pseudo, :);
+if isfield(layout, 'width'),  layout.width  = layout.width(~is_pseudo);  end
+if isfield(layout, 'height'), layout.height = layout.height(~is_pseudo); end
+
+% T9 and T10 sit at the ear level (near/below equator) and would distort
+% the position scaling if included in cfg_layout.channel.  Add them
+% manually at the inner edge of the ear outline (head circle radius = 0.5).
+t9_pos  = [-0.49  0.00];   % left ear
+t10_pos = [ 0.49  0.00];   % right ear
+layout.label  = [layout.label;  {'T9'; 'T10'}];
+layout.pos    = [layout.pos;    t9_pos; t10_pos];
+if isfield(layout, 'width')
+    layout.width  = [layout.width;  median(layout.width([1 end])); ...
+                                    median(layout.width([1 end]))];
+end
+if isfield(layout, 'height')
+    layout.height = [layout.height; median(layout.height([1 end])); ...
+                                    median(layout.height([1 end]))];
+end
+
+layout_labels = layout.label;
+layout_pos    = layout.pos;
 
 % -------------------------------------------------------------------------
 % 2. Separate recording channels from reference/ground electrodes
 %
 %    CPz (analysis reference, offline re-reference) and AFz (ground/initial
-%    reference) are not in the EEG data files but may already appear in the
-%    easycapM11 layout.  Keeping them out of fake_tl avoids duplicate-label
-%    errors that occur when the layout already contains them.
+%    reference) are not in the EEG data files but appear in the waveguard
+%    layout.  Keeping them out of fake_tl avoids duplicate-label errors
+%    that occur when the layout already contains them.
 % -------------------------------------------------------------------------
 ref_label = 'CPz';
 gnd_label = 'AFz';
@@ -84,14 +127,15 @@ fake_tl.dimord = 'chan_time';
 
 % -------------------------------------------------------------------------
 % 5. Render head outline via ft_topoplotER
-%    Pass layout as a string so FieldTrip uses the original file directly.
+%    Pass the layout struct (not a string) so ft_topoplotER uses the same
+%    pre-scaled positions without recomputing the layout internally.
 %    marker='off' suppresses built-in electrode rendering; circles and
 %    labels are drawn manually in step 6.
 % -------------------------------------------------------------------------
 fig = figure('Visible', 'off', 'Units', 'centimeters', 'Position', [0 0 18 20]);
 
 cfg_topo            = [];
-cfg_topo.layout     = 'easycapM11.mat';   % string — not modified struct
+cfg_topo.layout     = layout;   % pass struct so ft_topoplotER uses the same pre-scaled positions
 cfg_topo.xlim       = [0 0];              % select the single time point
 cfg_topo.style      = 'blank';
 cfg_topo.comment    = 'no';
@@ -121,7 +165,7 @@ col_act_text = [0.00, 0.00, 0.00];   % active channels: black label
 col_ref_text = [1.00, 1.00, 1.00];   % reference: white label
 col_gnd_text = [0.10, 0.10, 0.10];   % ground: dark label
 
-font_sz = 10;   % pt
+font_sz = 8;   % pt
 
 % Combine all electrodes: recording channels + reference + ground
 all_labels = [rec_labels;  {ref_label}; {gnd_label}];

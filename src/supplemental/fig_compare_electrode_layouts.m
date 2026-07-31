@@ -27,7 +27,7 @@ active_channels = {
 
 elc_files = {
     'C:\Users\kaito\fieldtrip\template\electrode\standard_1005.elc', ...
-    'C:\Users\kaito\Downloads\standard_waveguard64_1005_rotated.elc'
+    'C:\Users\kaito\fieldtrip\template\electrode\standard_waveguard64_1005_rotated.elc'
 };
 panel_titles = {
     'standard\_1005.elc  [FieldTrip generic]', ...
