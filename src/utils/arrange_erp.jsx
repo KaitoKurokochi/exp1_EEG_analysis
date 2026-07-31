@@ -95,8 +95,8 @@
     // 5. Condition definitions
     // ------------------------------------------------------------------
     var conditions = [
-        { label: "Go condition",    tags: ["go_pos_2", "go_pos_3", "go_neg_1"] },
-        { label: "No-Go condition", tags: ["nogo_pos_2", "nogo_neg_2"]         }
+        { label: "A - Go condition",    tags: ["go_pos_2", "go_pos_3", "go_neg_1"] },
+        { label: "B - No-Go condition", tags: ["nogo_pos_2", "nogo_neg_2"]         }
     ];
 
     // ------------------------------------------------------------------

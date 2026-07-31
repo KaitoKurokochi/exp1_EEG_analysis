@@ -80,8 +80,8 @@
         // ---- layout parameters (cm -> points;  1 cm = 28.3465 pt) ------
         var PT            = 28.3465;
         var TOPO          = 2.96 * PT;   // topomap cell size (matches topo_cm in MATLAB)
-        var ROW_GAP       = 1.00 * PT;   // gap between bottom of topo row and next panel label
-        var COL_GAP       = 0.50 * PT;   // horizontal gap between topomap columns
+        var ROW_GAP       = 0.70 * PT;   // gap between bottom of topo row and next panel label
+        var COL_GAP       = 0.30 * PT;   // horizontal gap between topomap columns
         var TIME_H        = 1.20 * PT;   // height of time-label header row
         var PANEL_LABEL_H = 0.60 * PT;   // height of panel-letter row
         var CB_GAP        = 0.30 * PT;   // gap between last topomap column and colorbar
@@ -92,12 +92,39 @@
         var CB_PDF_W = 1.80 * PT;
         var CB_PDF_H = 3.56 * PT;
 
-        var PANEL_FONT = 26;   // pt — panel letter labels
-        var TIME_FONT  = 20;   // pt — time-axis labels
+        var FONT_SIZE  = 18;   // pt — unified font size for all text (Arial)
+
+        // ---- find Arial Regular and Arial Bold -------------------------
+        var ARIAL_FONT = null, ARIAL_BOLD_FONT = null;
+        var ffi, tmpName;
+        for (ffi = 0; ffi < app.textFonts.length; ffi++) {
+            tmpName = app.textFonts[ffi].name;
+            if (tmpName === "ArialMT") { ARIAL_FONT = app.textFonts[ffi]; break; }
+        }
+        if (ARIAL_FONT === null) {
+            for (ffi = 0; ffi < app.textFonts.length; ffi++) {
+                tmpName = app.textFonts[ffi].name;
+                if (tmpName.indexOf("Arial") === 0 && tmpName.indexOf("Bold") === -1 && tmpName.indexOf("Italic") === -1) {
+                    ARIAL_FONT = app.textFonts[ffi]; break;
+                }
+            }
+        }
+        for (ffi = 0; ffi < app.textFonts.length; ffi++) {
+            tmpName = app.textFonts[ffi].name;
+            if (tmpName === "Arial-BoldMT") { ARIAL_BOLD_FONT = app.textFonts[ffi]; break; }
+        }
+        if (ARIAL_BOLD_FONT === null) {
+            for (ffi = 0; ffi < app.textFonts.length; ffi++) {
+                tmpName = app.textFonts[ffi].name;
+                if (tmpName.indexOf("Arial") === 0 && tmpName.indexOf("Bold") > -1 && tmpName.indexOf("Italic") === -1) {
+                    ARIAL_BOLD_FONT = app.textFonts[ffi]; break;
+                }
+            }
+        }
 
         // ---- row / column metadata ------------------------------------
         var ROW_NAMES  = ["Theta", "alpha", "beta", "Low_gamma", "High_gamma"];
-        var ROW_LABELS = ["theta", "alpha", "beta", "low-gamma", "high-gamma"];
+        var ROW_LABELS = ["A - theta", "B - alpha", "C - beta", "D - low-gamma", "E - high-gamma"];
         var TIMES_MS   = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
         var NR = ROW_NAMES.length;   // 6
@@ -184,7 +211,9 @@
 
             var tlabel = doc.textFrames.add();
             tlabel.contents = TIMES_MS[ti] + " ms";
-            tlabel.textRange.characterAttributes.size = TIME_FONT;
+            var tca = tlabel.textRange.characterAttributes;
+            tca.size = FONT_SIZE;
+            if (ARIAL_FONT !== null) { tca.textFont = ARIAL_FONT; }
 
             var tlW = tlabel.width;
             var tlH = tlabel.height;
@@ -198,7 +227,10 @@
         for (var ri = 0; ri < NR; ri++) {
             var plabel = doc.textFrames.add();
             plabel.contents = ROW_LABELS[ri];
-            plabel.textRange.characterAttributes.size = PANEL_FONT;
+            var pca = plabel.textRange.characterAttributes;
+            pca.size = FONT_SIZE;
+            var boldFnt = (ARIAL_BOLD_FONT !== null) ? ARIAL_BOLD_FONT : ARIAL_FONT;
+            if (boldFnt !== null) { pca.textFont = boldFnt; }
 
             var plH = plabel.height;
             // Vertically centre within the PANEL_LABEL_H band

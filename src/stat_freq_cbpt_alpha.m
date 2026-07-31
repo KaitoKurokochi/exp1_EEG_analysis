@@ -202,58 +202,7 @@ cache_path = fullfile(res_dir, 'imgs_cache.mat');
 save(cache_path, 'imgs', 'zlim_grp', 'zlim_diff', '-v7.3');
 fprintf('Cached imgs and zlims -> %s\n', cache_path);
 
-% assemble figure
-fig = figure('Visible', 'off', 'Units', 'centimeters', 'Position', [0, 0, fig_w_cm, fig_h_cm]);
-
-for ri = 1:n_rows
-    row_b = row_bottoms_cm(ri) / fig_h_cm;
-    for ti = 1:n_times
-        col_l = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
-        ax = axes('Position', [col_l, row_b, topo_cm/fig_w_cm, topo_cm/fig_h_cm]); %#ok<LAXES>
-        image(ax, imgs{ri, ti}); axis(ax, 'image'); axis(ax, 'off');
-    end
-end
-
-% time labels (top header)
-hdr_b = (pad_b_cm + n_rows*topo_cm + (n_rows-1)*row_gap_cm) / fig_h_cm;
-for ti = 1:n_times
-    col_l = (label_w_cm + (ti-1)*topo_cm) / fig_w_cm;
-    annotation(fig, 'textbox', [col_l, hdr_b, topo_cm/fig_w_cm, header_h_cm/fig_h_cm], ...
-        'String', sprintf('%d ms', round(times(ti)*1000)), ...
-        'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-        'VerticalAlignment', 'middle', 'FontSize', 18);
-end
-
-% row labels (left, horizontal, bold 14pt)
-for ri = 1:n_rows
-    row_b = row_bottoms_cm(ri) / fig_h_cm;
-    annotation(fig, 'textbox', [0, row_b, label_w_cm/fig_w_cm, topo_cm/fig_h_cm], ...
-        'String', row_cfg(ri).label, ...
-        'EdgeColor', 'none', ...
-        'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-        'FontSize', 18, 'FontWeight', 'bold');
-end
-
-% colorbars (one per row, on the right)
-% ax_cb is placed slightly to the LEFT of the colorbar strip so that
-% MATLAB renders the tick labels on the RIGHT side of the colorbar.
-cb_l = (label_w_cm + n_times*topo_cm + gap_cb_cm) / fig_w_cm;
-offset_n = 0.001;   % small leftward offset in normalised units
-for ri = 1:n_rows
-    row_b = row_bottoms_cm(ri) / fig_h_cm;
-    ax_cb = axes('Position', [cb_l - offset_n, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm], 'Visible', 'off'); %#ok<LAXES>
-    colormap(ax_cb, jet(256)); clim(ax_cb, zlims_row{ri});
-    cb = colorbar(ax_cb, 'Location', 'eastoutside');
-    cb.Position = [cb_l, row_b, cb_w_cm/fig_w_cm, topo_cm/fig_h_cm];
-    cb.FontSize = 18;
-end
-
-out_path = fullfile(res_dir, 'alpha_6row_topo.svg');
-print(fig, '-dsvg', out_path);
-close(fig);
-fprintf('Saved: %s\n', out_path);
-
-disp('Done.');
+disp('Done. (assembly skipped — individual PDFs are assembled in Illustrator)');
 
 %% save individual topomap PDFs (vector, Illustrator-ready)
 % Saves each row x time topomap as a separate PDF and colorbars (grp / diff

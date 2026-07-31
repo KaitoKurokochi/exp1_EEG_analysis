@@ -1,28 +1,34 @@
-// arrange_topomaps.jsx  (v3)
+// arrange_topomaps.jsx  (v5)
 // Adobe Illustrator ExtendScript
 //
-// Places individual topomap PDFs (from stat_freq_cbpt_alpha section 3)
-// into a panel grid on the active artboard.
+// Layout (inside each bordered box, top to bottom):
+//   "Go" (large font, top)
+//   0 ms  50 ms  100 ms  ...  500 ms   <- time-label row
+//   Experienced                         <- group label
+//   [T0] [T1] [T2] ... [T10]  [CB_grp] <- topo row + colorbar
+//   Novice
+//   [T0] [T1] [T2] ... [T10]  [CB_grp]
+//   Difference
+//   [T0] [T1] [T2] ... [T10]  [CB_diff]
 //
-// Layout (top -> bottom for each panel):
-//   Row 1  : time labels  (0 ms … 500 ms)                   height = TIME_H
-//   Row 2  : panel letter "A"  (left-aligned)                height = PANEL_LABEL_H
-//   Row 3  : go_exp topomap row  + colorbar on right         height = TOPO
-//   gap    : ROW_GAP
-//   Row 4  : panel letter "B"
-//   Row 5  : go_nov topomap row  + colorbar
-//   … (same pattern for C–F)
+//   No-Go box follows below with the same structure.
 //
-// Row order:   go_exp / go_nov / go_diff / nogo_exp / nogo_nov / nogo_diff
-// Col order:   0 ms, 50 ms, … 500 ms  (11 columns)
+// Input folder: result/fig_freq_alpha_topo/individual/
+// Expected files:
+//   go_exp_NNNms.pdf, go_nov_NNNms.pdf, go_diff_NNNms.pdf   (NNN = 000..500)
+//   nogo_exp_NNNms.pdf, nogo_nov_NNNms.pdf, nogo_diff_NNNms.pdf
+//   colorbar_grp.pdf, colorbar_diff.pdf
 //
-// Usage:
-//   File > Scripts > Other Script … > select this file
-//   Select the folder:  result/fig_freq_alpha_topo/individual/
+// Usage: File > Scripts > Other Script ... > select this file
 
 #target illustrator
 
 (function () {
+
+    // ------------------------------------------------------------------
+    // 0.  Outer try-catch: catches errors that occur before folder dialog
+    // ------------------------------------------------------------------
+    try {
 
     // ------------------------------------------------------------------
     // 1.  Select source folder FIRST (before touching the document)
@@ -36,23 +42,79 @@
     }
 
     // ------------------------------------------------------------------
-    // 2.  Get active document (after folder dialog so the user knows
-    //     the script is running if an error occurs here)
+    // 2.  Get active document
     // ------------------------------------------------------------------
     var doc;
     try {
         doc = app.activeDocument;
-    } catch (e) {
+    } catch (e2) {
         alert("Error: No Illustrator document is open.\nPlease open a document and run the script again.");
         return;
     }
 
     // ------------------------------------------------------------------
-    // 3.  Wrap everything in try-catch for clear error reporting
+    // 3.  Helper functions (outside inner try for ES3 compatibility)
+    // ------------------------------------------------------------------
+
+    var _doc = doc;
+    var ARIAL_FONT      = null;   // set in main layout section after font search
+    var ARIAL_BOLD_FONT = null;   // set in main layout section after font search
+
+    // Place a PDF at (x, topY). Scale to targetW x targetH if given.
+    function placePDF(filePath, x, topY, targetW, targetH) {
+        var file = new File(filePath);
+        if (!file.exists) { return null; }
+        var item  = _doc.placedItems.add();
+        item.file = file;
+        if (targetW !== undefined && targetH !== undefined) {
+            item.resize((targetW / item.width) * 100, (targetH / item.height) * 100);
+        }
+        item.position = [x, topY];
+        return item;
+    }
+
+    // Draw a border-only rectangle.
+    function drawRect(left, top, width, height, lw) {
+        var r = _doc.pathItems.rectangle(top, left, width, height);
+        r.filled      = false;
+        r.stroked     = true;
+        r.strokeWidth = lw;
+        var c = new RGBColor();
+        c.red = 0; c.green = 0; c.blue = 0;
+        r.strokeColor = c;
+        return r;
+    }
+
+    // Add a text frame centred at (cx, cy). Applies ARIAL_FONT when available.
+    function addText(str, fontSize, cx, cy) {
+        var tf = _doc.textFrames.add();
+        tf.contents = str;
+        var ca = tf.textRange.characterAttributes;
+        ca.size = fontSize;
+        if (ARIAL_FONT !== null) { ca.textFont = ARIAL_FONT; }
+        tf.position = [cx - tf.width / 2, cy + tf.height / 2];
+        return tf;
+    }
+
+    // Add a text frame left-aligned: left edge at lx, vertically centred at cy.
+    // Pass useBold=true to use Arial Bold when available.
+    function addLeftText(str, fontSize, lx, cy, useBold) {
+        var tf = _doc.textFrames.add();
+        tf.contents = str;
+        var ca = tf.textRange.characterAttributes;
+        ca.size = fontSize;
+        var fnt = (useBold && ARIAL_BOLD_FONT !== null) ? ARIAL_BOLD_FONT : ARIAL_FONT;
+        if (fnt !== null) { ca.textFont = fnt; }
+        tf.position = [lx, cy + tf.height / 2];
+        return tf;
+    }
+
+    // ------------------------------------------------------------------
+    // 4.  Main layout
     // ------------------------------------------------------------------
     try {
 
-        // ---- verify RGB colour mode ------------------------------------
+        // ---- verify RGB colour mode -----------------------------------
         if (doc.documentColorSpace !== DocumentColorSpace.RGB) {
             var switchNow = confirm(
                 "This document is in CMYK mode.\n\n" +
@@ -68,174 +130,204 @@
             }
         }
 
-        // ---- layout parameters (cm -> points;  1 cm = 28.3465 pt) ------
-        var PT            = 28.3465;
-        var TOPO          = 2.96 * PT;   // topomap cell size (match topo_cm in MATLAB)
-        var ROW_GAP       = 1.00 * PT;   // gap between bottom of topo row and next label row
-        var COL_GAP       = 0.50 * PT;   // horizontal gap between topomap columns
-        var TIME_H        = 1.20 * PT;   // height of time-label header row
-        var PANEL_LABEL_H = 0.60 * PT;   // height of panel-letter row (A, B, …)
-        var CB_GAP        = 0.30 * PT;   // gap between last topomap column and colorbar
+        // ---- layout parameters (cm -> points;  1 cm = 28.3465 pt) ----
+        var PT           = 28.3465;
+        var TOPO         = 2.96  * PT;   // topomap cell size (must match topo_cm in MATLAB)
+        var FONT_SIZE        = 18;            // unified font size for all text (pt)
+        var COND_H           = 0.80  * PT;   // "Go" / "No-Go" label row height
+        var TIME_H           = 0.80  * PT;   // time-label row height
+        var TIME_BOTTOM_GAP  = 0.30  * PT;   // extra space below time labels
+        var GRP_LABEL_H      = 0.80  * PT;   // group label row height
+        var TOPO_GAP         = 0.30  * PT;   // horizontal gap between topo cells in a row
+        var ROW_GAP          = 0.70  * PT;   // vertical gap between topo row and next group label
+        var BOX_PAD      = 0.40  * PT;   // inner padding
+        var BOX_LW       = 1.5;          // border line width (pt)
+        var SECTION_GAP  = 0.70  * PT;   // vertical gap between Go and No-Go boxes
+        var PAD_OUTER    = 0.40  * PT;   // outer figure margin
+        var CB_GAP       = 0.30  * PT;   // horizontal gap between topo grid and colorbar
 
-        // Colorbar PDF natural dimensions (must match MATLAB stat_freq_cbpt_alpha output)
-        //   width  = pad_l + cb_w + tick + pad_r = 0.20+0.40+1.00+0.20 = 1.80 cm
-        //   height = topo_cm + 2*pad_v           = 2.96 + 0.60         = 3.56 cm
+        // Colorbar PDF natural dimensions (must match MATLAB stat_freq_cbpt_alpha section 3)
+        //   width  = pad_l(0.20)+cb_w(0.40)+tick(1.00)+pad_r(0.20) = 1.80 cm
+        //   height = topo_cm(2.96)+2*pad_v(0.30)                   = 3.56 cm
         var CB_PDF_W = 1.80 * PT;
         var CB_PDF_H = 3.56 * PT;
 
-        var PANEL_FONT = 26;   // pt — panel letter labels
-        var TIME_FONT  = 20;   // pt — time-axis labels
+        // ---- find Arial Regular and Arial Bold --------------------------------
+        var ffi, tmpName;
+        ARIAL_FONT = null;
+        for (ffi = 0; ffi < app.textFonts.length; ffi++) {
+            tmpName = app.textFonts[ffi].name;
+            if (tmpName === "ArialMT") { ARIAL_FONT = app.textFonts[ffi]; break; }
+        }
+        if (ARIAL_FONT === null) {
+            for (ffi = 0; ffi < app.textFonts.length; ffi++) {
+                tmpName = app.textFonts[ffi].name;
+                if (tmpName.indexOf("Arial") === 0 && tmpName.indexOf("Bold") === -1 && tmpName.indexOf("Italic") === -1) {
+                    ARIAL_FONT = app.textFonts[ffi];
+                    break;
+                }
+            }
+        }
+        ARIAL_BOLD_FONT = null;
+        for (ffi = 0; ffi < app.textFonts.length; ffi++) {
+            tmpName = app.textFonts[ffi].name;
+            if (tmpName === "Arial-BoldMT") { ARIAL_BOLD_FONT = app.textFonts[ffi]; break; }
+        }
+        if (ARIAL_BOLD_FONT === null) {
+            for (ffi = 0; ffi < app.textFonts.length; ffi++) {
+                tmpName = app.textFonts[ffi].name;
+                if (tmpName.indexOf("Arial") === 0 && tmpName.indexOf("Bold") > -1 && tmpName.indexOf("Italic") === -1) {
+                    ARIAL_BOLD_FONT = app.textFonts[ffi];
+                    break;
+                }
+            }
+        }
 
-        // ---- row / column metadata -------------------------------------
-        var ROW_NAMES = [
-            "go_exp",   "go_nov",   "go_diff",
-            "nogo_exp", "nogo_nov", "nogo_diff"
+        // ---- data definitions -----------------------------------------
+        var COND_KEYS   = ["go",    "nogo"];
+        var COND_TITLES = ["Go",    "No-Go"];
+        var GRP_KEYS    = ["exp",   "nov",    "diff"];
+        // GRP_LABELS[ci][ri]: panel letters assigned sequentially across conditions
+        //   Go:    A - Experienced, B - Novice, C - Difference
+        //   No-Go: D - Experienced, E - Novice, F - Difference
+        var GRP_LABELS  = [
+            ["A - Experienced", "B - Novice", "C - Difference"],
+            ["D - Experienced", "E - Novice", "F - Difference"]
         ];
-        var ROW_LABELS = ["A", "B", "C", "D", "E", "F"];
-        var CB_NAMES = [
-            "colorbar_grp", "colorbar_grp", "colorbar_diff",
-            "colorbar_grp", "colorbar_grp", "colorbar_diff"
-        ];
-        var TIMES_MS = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
+        var CB_NAMES    = ["colorbar_grp", "colorbar_grp", "colorbar_diff"];
+        var TIMES_MS    = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
-        var NR = ROW_NAMES.length;    // 6
-        var NC = TIMES_MS.length;     // 11
+        var NC = TIMES_MS.length;   // 11 time points = columns
+        var NR = GRP_KEYS.length;   //  3 groups = rows per section
 
-        // ---- artboard size ---------------------------------------------
-        // Total width: topomap columns + gaps + colorbar
-        var totalW = NC * TOPO + (NC - 1) * COL_GAP + CB_GAP + CB_PDF_W;
-        // Total height: time header + (label row + topo row) per panel + gaps between panels
-        var totalH = TIME_H + NR * (PANEL_LABEL_H + TOPO) + (NR - 1) * ROW_GAP;
+        // ---- section dimensions ---------------------------------------
+        // inner width  = 11 topo cols + 10 topo gaps + cb gap + colorbar width
+        // inner height = cond + time + time_bottom_gap + 3*(label + topo) + 2*row_gaps
+        var SEC_INNER_W = NC * TOPO + (NC - 1) * TOPO_GAP + CB_GAP + CB_PDF_W;
+        var SEC_INNER_H = COND_H + TIME_H + TIME_BOTTOM_GAP + NR * (GRP_LABEL_H + TOPO) + (NR - 1) * ROW_GAP;
+        var SEC_BOX_W   = SEC_INNER_W + 2 * BOX_PAD;
+        var SEC_BOX_H   = SEC_INNER_H + 2 * BOX_PAD;
 
-        var abRect  = doc.artboards[0].artboardRect;  // [left, top, right, bottom]
+        // ---- artboard size --------------------------------------------
+        var totalW = PAD_OUTER + SEC_BOX_W + PAD_OUTER;
+        var totalH = PAD_OUTER + 2 * SEC_BOX_H + SECTION_GAP + PAD_OUTER;
+
+        var abRect  = doc.artboards[0].artboardRect;
         var originX = abRect[0];
-        var originY = abRect[1];   // top-left corner of artboard
+        var originY = abRect[1];
 
         doc.artboards[0].artboardRect = [
             originX, originY,
             originX + totalW, originY - totalH
         ];
 
-        // Grid origin: left edge = originX (no left-label column)
-        //              top  edge = immediately below time header
-        var gridX = originX;
-        var gridY = originY - TIME_H;   // Y of top of first panel-label row
+        // x-left of topo grid (same for all sections)
+        var topoGridLeft = originX + PAD_OUTER + BOX_PAD;
+        // x-left of colorbar column (after all topo cols + inter-col gaps)
+        var cbLeft       = topoGridLeft + NC * TOPO + (NC - 1) * TOPO_GAP + CB_GAP;
 
-        // Y helpers  (Illustrator: Y increases upward)
-        //   panelLabelTopY(ri) = top edge of panel-letter row for panel ri
-        //   topoTopY(ri)       = top edge of topomap row for panel ri
-        function panelLabelTopY(ri) {
-            return gridY - ri * (PANEL_LABEL_H + TOPO + ROW_GAP);
-        }
-        function topoTopY(ri) {
-            return panelLabelTopY(ri) - PANEL_LABEL_H;
-        }
+        // ---- declare loop variables upfront (ES3 best practice) -------
+        var ci, ri, ti, i;
+        var boxTop, boxLeft;
+        var curY, timeCY, colCX;
+        var rowTopY, rowCenterY;
+        var t_ms, pad3, fname, x, item;
+        var cbTopY, cbPath, cbItem;
+        var placed_count, missing;
+        var items, minX, maxX, minY, maxY, gb;
 
-        // ---- place topomap PDFs ----------------------------------------
-        var placed_count = 0;
-        var missing      = [];
+        placed_count = 0;
+        missing      = [];
 
-        for (var ri = 0; ri < NR; ri++) {
-            for (var ti = 0; ti < NC; ti++) {
+        // ---- section boxes (ci=0: Go on top, ci=1: No-Go below) ------
+        for (ci = 0; ci < 2; ci++) {
+            boxTop  = originY - PAD_OUTER - ci * (SEC_BOX_H + SECTION_GAP);
+            boxLeft = originX + PAD_OUTER;
 
-                var t_ms  = TIMES_MS[ti];
-                var pad   = ("000" + t_ms).slice(-3);        // e.g. "050"
-                var fname = ROW_NAMES[ri] + "_" + pad + "ms.pdf";
-                var file  = new File(folder.fullName + "/" + fname);
+            drawRect(boxLeft, boxTop, SEC_BOX_W, SEC_BOX_H, BOX_LW);
 
-                if (!file.exists) { missing.push(fname); continue; }
+            // curY walks downward from the top inner edge of the box
+            curY = boxTop - BOX_PAD;
 
-                var x = gridX + ti * (TOPO + COL_GAP);
-                var y = topoTopY(ri);
+            // 1. Condition label ("Go" / "No-Go")  -- left-aligned, bold
+            addLeftText(COND_TITLES[ci], FONT_SIZE, topoGridLeft, curY - COND_H / 2, true);
+            curY = curY - COND_H;
 
-                var item  = doc.placedItems.add();
-                item.file = file;
-                // Scale to fit the TOPO cell
-                var sx = (TOPO / item.width)  * 100;
-                var sy = (TOPO / item.height) * 100;
-                item.resize(sx, sy);
-                item.position = [x, y];
+            // 2. Time labels (one per topo column) -- centred above each column
+            timeCY = curY - TIME_H / 2;
+            for (ti = 0; ti < NC; ti++) {
+                colCX = topoGridLeft + ti * (TOPO + TOPO_GAP) + TOPO / 2;
+                addText(TIMES_MS[ti] + " ms", FONT_SIZE, colCX, timeCY);
+            }
+            curY = curY - TIME_H;
+            curY = curY - TIME_BOTTOM_GAP;
 
-                placed_count++;
+            // 3. Group rows (Experienced / Novice / Difference)
+            for (ri = 0; ri < NR; ri++) {
+                // group label -- left-aligned
+                addLeftText(GRP_LABELS[ci][ri], FONT_SIZE, topoGridLeft, curY - GRP_LABEL_H / 2, true);
+                curY = curY - GRP_LABEL_H;
+
+                // topo row
+                rowTopY    = curY;
+                rowCenterY = rowTopY - TOPO / 2;
+
+                for (ti = 0; ti < NC; ti++) {
+                    t_ms  = TIMES_MS[ti];
+                    pad3  = ("000" + t_ms).slice(-3);
+                    fname = COND_KEYS[ci] + "_" + GRP_KEYS[ri] + "_" + pad3 + "ms.pdf";
+                    x     = topoGridLeft + ti * (TOPO + TOPO_GAP);
+                    item  = placePDF(folder.fullName + "/" + fname, x, rowTopY, TOPO, TOPO);
+                    if (item !== null) { placed_count = placed_count + 1; } else { missing.push(fname); }
+                }
+
+                // colorbar centred vertically on this topo row
+                cbTopY = rowCenterY + CB_PDF_H / 2;
+                cbPath = folder.fullName + "/" + CB_NAMES[ri] + ".pdf";
+                cbItem = placePDF(cbPath, cbLeft, cbTopY);
+                if (cbItem === null) { missing.push(CB_NAMES[ri] + ".pdf"); }
+
+                curY = curY - TOPO;
+
+                // gap between groups (not after the last group)
+                if (ri < NR - 1) { curY = curY - ROW_GAP; }
             }
         }
 
-        // ---- place colorbar PDFs (one per panel row) -------------------
-        var cbX       = gridX + NC * TOPO + (NC - 1) * COL_GAP + CB_GAP;
-        var cb_placed = 0;
-
-        for (var ri = 0; ri < NR; ri++) {
-            var cbFile = new File(folder.fullName + "/" + CB_NAMES[ri] + ".pdf");
-            if (!cbFile.exists) { missing.push(CB_NAMES[ri] + ".pdf"); continue; }
-
-            // Vertically centre colorbar on the topomap row
-            var topoCenterY = topoTopY(ri) - TOPO / 2;
-            var cbTopY      = topoCenterY + CB_PDF_H / 2;
-
-            var cbItem  = doc.placedItems.add();
-            cbItem.file = cbFile;
-            cbItem.position = [cbX, cbTopY];   // natural size — no resize
-            cb_placed++;
-        }
-
-        // ---- add time labels above each column -------------------------
-        for (var ti = 0; ti < NC; ti++) {
-            var colCenterX = gridX + ti * (TOPO + COL_GAP) + TOPO / 2;
-
-            var tlabel = doc.textFrames.add();
-            tlabel.contents = TIMES_MS[ti] + " ms";
-            tlabel.textRange.characterAttributes.size = TIME_FONT;
-
-            var tlW = tlabel.width;
-            var tlH = tlabel.height;
-            tlabel.position = [
-                colCenterX - tlW / 2,
-                originY - (TIME_H - tlH) / 2
-            ];
-        }
-
-        // ---- add panel letter labels (A, B, … left-aligned) -----------
-        for (var ri = 0; ri < NR; ri++) {
-            var plabel = doc.textFrames.add();
-            plabel.contents = ROW_LABELS[ri];
-            plabel.textRange.characterAttributes.size = PANEL_FONT;
-
-            var plH = plabel.height;
-            // Vertically centre within the PANEL_LABEL_H band
-            var bandCenterY = panelLabelTopY(ri) - PANEL_LABEL_H / 2;
-            plabel.position = [gridX, bandCenterY + plH / 2];
-        }
-
-        // ---- fit artboard to actual content ----------------------------
-        var items = doc.pageItems;
+        // ---- fit artboard to actual content + margin -----------------
+        // Use geometricBounds (path only); add MARGIN so border strokes are not clipped.
+        var MARGIN = 4;   // pt margin outside all content
+        items = doc.pageItems;
         if (items.length > 0) {
-            var minX =  1e18, maxX = -1e18;
-            var maxY = -1e18, minY =  1e18;
-            for (var i = 0; i < items.length; i++) {
-                var gb = items[i].geometricBounds;  // [left, top, right, bottom]
+            minX =  999999; maxX = -999999;
+            maxY = -999999; minY =  999999;
+            for (i = 0; i < items.length; i++) {
+                gb = items[i].geometricBounds;
                 if (gb[0] < minX) { minX = gb[0]; }
                 if (gb[1] > maxY) { maxY = gb[1]; }
                 if (gb[2] > maxX) { maxX = gb[2]; }
                 if (gb[3] < minY) { minY = gb[3]; }
             }
-            doc.artboards[0].artboardRect = [minX, maxY, maxX, minY];
+            doc.artboards[0].artboardRect = [minX - MARGIN, maxY + MARGIN, maxX + MARGIN, minY - MARGIN];
         }
 
-        // ---- final report ----------------------------------------------
+        // ---- final report --------------------------------------------
         var msg = "Done.\n\n" +
                   "Topomap PDFs placed : " + placed_count + "\n" +
-                  "Colorbar PDFs placed: " + cb_placed    + "\n" +
-                  "Time labels         : " + NC           + "\n" +
-                  "Panel labels (A–F)  : " + NR;
+                  "Missing files       : " + missing.length;
         if (missing.length > 0) {
-            msg += "\n\nMissing files (" + missing.length + "):\n";
+            msg += "\n\nMissing (" + missing.length + "):\n";
             msg += missing.slice(0, 10).join("\n");
             if (missing.length > 10) { msg += "\n..."; }
         }
         alert(msg);
 
     } catch (e) {
-        alert("Script error:\n" + e.message + "\n\nLine: " + e.line);
+        alert("Script error (layout):\n" + e.message + "\n\nLine: " + e.line);
+    }
+
+    } catch (eFatal) {
+        alert("Fatal script error:\n" + eFatal.message + "\n\nLine: " + eFatal.line);
     }
 
 })();
