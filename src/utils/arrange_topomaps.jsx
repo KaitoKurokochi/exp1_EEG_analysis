@@ -31,13 +31,11 @@
     try {
 
     // ------------------------------------------------------------------
-    // 1.  Select source folder FIRST (before touching the document)
+    // 1.  Set source folder path
     // ------------------------------------------------------------------
-    var folder = Folder.selectDialog(
-        "Select the 'individual' folder  (result/fig_freq_alpha_topo/individual)"
-    );
-    if (!folder) {
-        alert("No folder selected. Script cancelled.");
+    var folder = new Folder("C:/Users/kaito/workspace/exp1_EEG_analysis/result/fig_freq_alpha_topo/individual");
+    if (!folder.exists) {
+        alert("Folder not found:\n" + folder.fullName);
         return;
     }
 
@@ -146,11 +144,24 @@
         var PAD_OUTER    = 0.40  * PT;   // outer figure margin
         var CB_GAP       = 0.30  * PT;   // horizontal gap between topo grid and colorbar
 
-        // Colorbar PDF natural dimensions (must match MATLAB stat_freq_cbpt_alpha section 3)
-        //   width  = pad_l(0.20)+cb_w(0.40)+tick(1.00)+pad_r(0.20) = 1.80 cm
-        //   height = topo_cm(2.96)+2*pad_v(0.30)                   = 3.56 cm
-        var CB_PDF_W = 1.80 * PT;
-        var CB_PDF_H = 3.56 * PT;
+        // Colorbar PDF dimensions (must match MATLAB stat_freq_cbpt_alpha colorbar section)
+        //   CB_PDF_W: pad_l(0.20)+cb_w(0.40)+tick(1.00)+label_w(0.70)+pad_r(0.20) = 2.50 cm
+        //   CB_PDF_H: computed dynamically in MATLAB; actual height read from cbItem.height.
+        //
+        //   CB_PAD_V per colorbar: eff_pad_v_cm in MATLAB =
+        //     max(pad_v_cm=0.30, lbl_half_cm - topo_cm_cb/2)
+        //   where char_w_cm = cb_font_sz(18)*0.60/28.3465, lbl_half_cm = nchars * char_w_cm / 2
+        //
+        //   "Power (db)"      10 chars -> lbl_half=1.905 cm -> eff_pad_v = max(0.30,0.425) = 0.425 cm
+        //   "Difference (db)" 15 chars -> lbl_half=2.858 cm -> eff_pad_v = max(0.30,1.378) = 1.378 cm
+        //
+        //   Bar center from PDF bottom = eff_pad_v_cm + topo_cm_cb/2
+        //   => cbTopY = rowCenterY + cbItem.height - CB_PAD_V_k - TOPO/2
+        var CB_PDF_W      = 2.50  * PT;
+        var CB_PAD_V_GRP  = 0.425 * PT;   // "Power (db)"      -- must match eff_pad_v_cm in MATLAB
+        var CB_PAD_V_DIFF = 1.378 * PT;   // "Difference (db)" -- must match eff_pad_v_cm in MATLAB
+        // Map rows [exp, nov, diff] to their colorbar bottom-pad values:
+        var CB_PAD_V_BY_ROW = [CB_PAD_V_GRP, CB_PAD_V_GRP, CB_PAD_V_DIFF];
 
         // ---- find Arial Regular and Arial Bold --------------------------------
         var ffi, tmpName;
@@ -185,14 +196,14 @@
 
         // ---- data definitions -----------------------------------------
         var COND_KEYS   = ["go",    "nogo"];
-        var COND_TITLES = ["Go",    "No-Go"];
+        var COND_TITLES = ["Go Condition",    "No-Go Condition"];
         var GRP_KEYS    = ["exp",   "nov",    "diff"];
         // GRP_LABELS[ci][ri]: panel letters assigned sequentially across conditions
-        //   Go:    A - Experienced, B - Novice, C - Difference
-        //   No-Go: D - Experienced, E - Novice, F - Difference
+        //   Go:    A (Experienced), B (Novice), C (Difference)
+        //   No-Go: D (Experienced), E (Novice), F (Difference)
         var GRP_LABELS  = [
-            ["A - Experienced", "B - Novice", "C - Difference"],
-            ["D - Experienced", "E - Novice", "F - Difference"]
+            ["A (Experienced)", "B (Novice)", "C (Difference)"],
+            ["D (Experienced)", "E (Novice)", "F (Difference)"]
         ];
         var CB_NAMES    = ["colorbar_grp", "colorbar_grp", "colorbar_diff"];
         var TIMES_MS    = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
@@ -200,11 +211,24 @@
         var NC = TIMES_MS.length;   // 11 time points = columns
         var NR = GRP_KEYS.length;   //  3 groups = rows per section
 
+        // Row heights from actual PDF MediaBox heights (measured from generated files).
+        // exportgraphics uses tight clipping, so the PDF height = rendered content height,
+        // NOT the MATLAB figure height.  Values are in Illustrator points (= PDF points = 1/72 in).
+        //   colorbar_grp.pdf:  MediaBox [0 0 72  98] -> 98  pt
+        //   colorbar_diff.pdf: MediaBox [0 0 72 118] -> 118 pt
+        var CB_ROW_H_GRP  = 98;    // pt -- update if PDF is regenerated with different font/label
+        var CB_ROW_H_DIFF = 118;   // pt -- update if PDF is regenerated with different font/label
+        var CB_ROW_H_BY_ROW = [CB_ROW_H_GRP, CB_ROW_H_GRP, CB_ROW_H_DIFF];
+
         // ---- section dimensions ---------------------------------------
         // inner width  = 11 topo cols + 10 topo gaps + cb gap + colorbar width
-        // inner height = cond + time + time_bottom_gap + 3*(label + topo) + 2*row_gaps
-        var SEC_INNER_W = NC * TOPO + (NC - 1) * TOPO_GAP + CB_GAP + CB_PDF_W;
-        var SEC_INNER_H = COND_H + TIME_H + TIME_BOTTOM_GAP + NR * (GRP_LABEL_H + TOPO) + (NR - 1) * ROW_GAP;
+        // inner height = cond + time + time_bottom_gap
+        //              + 3*group_label + row_heights_sum + 2*row_gaps
+        var SEC_INNER_W    = NC * TOPO + (NC - 1) * TOPO_GAP + CB_GAP + CB_PDF_W;
+        var SEC_ROW_H_SUM  = CB_ROW_H_GRP + CB_ROW_H_GRP + CB_ROW_H_DIFF;
+        var SEC_INNER_H    = COND_H + TIME_H + TIME_BOTTOM_GAP
+                           + NR * GRP_LABEL_H + SEC_ROW_H_SUM
+                           + (NR - 1) * ROW_GAP;
         var SEC_BOX_W   = SEC_INNER_W + 2 * BOX_PAD;
         var SEC_BOX_H   = SEC_INNER_H + 2 * BOX_PAD;
 
@@ -230,9 +254,9 @@
         var ci, ri, ti, i;
         var boxTop, boxLeft;
         var curY, timeCY, colCX;
-        var rowTopY, rowCenterY;
+        var rowTopY, rowCenterY, topoTopY, rowH;
         var t_ms, pad3, fname, x, item;
-        var cbTopY, cbPath, cbItem;
+        var cbPath, cbItem;
         var placed_count, missing;
         var items, minX, maxX, minY, maxY, gb;
 
@@ -268,26 +292,44 @@
                 addLeftText(GRP_LABELS[ci][ri], FONT_SIZE, topoGridLeft, curY - GRP_LABEL_H / 2, true);
                 curY = curY - GRP_LABEL_H;
 
-                // topo row
-                rowTopY    = curY;
-                rowCenterY = rowTopY - TOPO / 2;
+                // --- Step 1: place colorbar first to measure actual row height ---
+                // Row height = colorbar PDF height (taller than TOPO).
+                // Topo cells are then centred vertically inside this row.
+                rowTopY = curY;
+                cbPath  = folder.fullName + "/" + CB_NAMES[ri] + ".pdf";
+                cbItem  = placePDF(cbPath, cbLeft, rowTopY);   // temporary position
+                if (cbItem !== null) {
+                    rowH = cbItem.height;
+                } else {
+                    rowH = CB_ROW_H_BY_ROW[ri];   // fallback: use estimated height
+                    missing.push(CB_NAMES[ri] + ".pdf");
+                }
 
+                // Row metrics derived from colorbar height
+                rowCenterY = rowTopY - rowH / 2;           // vertical center of row
+                topoTopY   = rowCenterY + TOPO / 2;        // top of topo cell (centred in row)
+
+                // --- Step 2: place topo cells centred in the row ---
                 for (ti = 0; ti < NC; ti++) {
                     t_ms  = TIMES_MS[ti];
                     pad3  = ("000" + t_ms).slice(-3);
                     fname = COND_KEYS[ci] + "_" + GRP_KEYS[ri] + "_" + pad3 + "ms.pdf";
                     x     = topoGridLeft + ti * (TOPO + TOPO_GAP);
-                    item  = placePDF(folder.fullName + "/" + fname, x, rowTopY, TOPO, TOPO);
+                    item  = placePDF(folder.fullName + "/" + fname, x, topoTopY, TOPO, TOPO);
                     if (item !== null) { placed_count = placed_count + 1; } else { missing.push(fname); }
                 }
 
-                // colorbar centred vertically on this topo row
-                cbTopY = rowCenterY + CB_PDF_H / 2;
-                cbPath = folder.fullName + "/" + CB_NAMES[ri] + ".pdf";
-                cbItem = placePDF(cbPath, cbLeft, cbTopY);
-                if (cbItem === null) { missing.push(CB_NAMES[ri] + ".pdf"); }
+                // --- Step 3: reposition colorbar with PDF centre at rowCenterY ---
+                // exportgraphics tight-clips to content.  The rendered content
+                // (bar + ticks + rotated label) is symmetric about the bar centre,
+                // so PDF centre ~= bar centre.
+                //   cbTopY = rowCenterY + cbItem.height / 2
+                if (cbItem !== null) {
+                    cbItem.position = [cbLeft, rowCenterY + cbItem.height / 2];
+                }
 
-                curY = curY - TOPO;
+                // Advance cursor by the full colorbar row height
+                curY = curY - rowH;
 
                 // gap between groups (not after the last group)
                 if (ri < NR - 1) { curY = curY - ROW_GAP; }
