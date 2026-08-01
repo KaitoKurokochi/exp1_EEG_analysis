@@ -349,7 +349,7 @@ for ci = 1:length(conditions)
             xlim([t_erp(1), t_erp(end)]);
             ylim([y_lo, y_hi]);
             xlabel('Time (s)', 'FontSize', font_sz);
-            ylabel('\muV',     'FontSize', font_sz);
+            ylabel('Amplitude (\muV)', 'FontSize', font_sz);
             set(ax_erp, 'FontSize', font_sz, 'TickDir', 'out', 'Box', 'off');
 
             % ---- Dynamic sizing (same approach as legend PDF) ----------------
@@ -395,7 +395,7 @@ for ci = 1:length(conditions)
                 'Position', [0, 0, topo_cm, topo_cm]);
             cfg_t = [];
             cfg_t.parameter          = 'stat';
-            cfg_t.layout             = 'easycapM11.mat';
+            cfg_t.layout             = 'standard_waveguard64_1005_rotated.elc';
             cfg_t.style              = 'blank';
             cfg_t.comment            = 'no';
             cfg_t.colorbar           = 'no';
@@ -468,177 +468,3 @@ fname_leg = fullfile(ind_dir, 'legend.pdf');
 exportgraphics(fig_leg, fname_leg, 'ContentType', 'vector');
 close(fig_leg);
 fprintf('Saved legend PDF: %s\n', fname_leg);
-
-%% figure - skipped clusters (ERP waveform + topomap, PNG)
-% Visualise clusters that were excluded by the skip criteria.
-% One PNG per skipped cluster; title includes skip reason.
-clear;
-config;
-
-data_skip_dir    = fullfile(prj_dir, 'result', 'stat_erp_clusters', 'disqualified');
-data_erp_dir     = fullfile(prj_dir, 'result', 'erp_group_cond');
-data_stat_dir    = fullfile(prj_dir, 'result', 'stat_erp_cbpt');
-data_rt_dir      = fullfile(prj_dir, 'result', 'stat_rt');
-res_fig_dis_dir  = fullfile(prj_dir, 'result', 'fig_stat_erp_cbpt', 'disqualified');
-alpha            = 0.05;
-
-if ~exist(res_fig_dis_dir, 'dir'), mkdir(res_fig_dis_dir); end
-
-col_exp  = [0.00, 0.45, 0.74];   % blue
-col_nov  = [0.85, 0.33, 0.10];   % red
-col_sig  = [0.85, 0.85, 0.85];   % gray significance shading
-col_skip = [0.95, 0.90, 0.70];   % light yellow — skipped cluster shading
-
-load(fullfile(data_rt_dir, 'stat.mat'));
-mean_rt_exp = mean(stat.exp.m_rt);
-mean_rt_nov = mean(stat.nov.m_rt);
-
-for ci = 1:length(conditions)
-    % grand average over full time range (all channels)
-    load(fullfile(data_erp_dir, ['exp_', conditions{ci}, '.mat']));
-    cfg_avg = []; cfg_avg.keeptrials = 'no';
-    avg_exp_full = ft_timelockanalysis(cfg_avg, data); clear data;
-
-    load(fullfile(data_erp_dir, ['nov_', conditions{ci}, '.mat']));
-    avg_nov_full = ft_timelockanalysis(cfg_avg, data); clear data;
-
-    load(fullfile(data_stat_dir, [conditions{ci}, '.mat']));
-
-    for pol_i = 1:2
-        if pol_i == 1, pol = 'pos'; clusters = stat.posclusters;
-        else,          pol = 'neg'; clusters = stat.negclusters;
-        end
-
-        for cli = 1:length(clusters)
-            % only process clusters that were significant but then skipped
-            if isnan(clusters(cli).prob) || clusters(cli).prob >= alpha, continue; end
-
-            fpath_skip = fullfile(data_skip_dir, [conditions{ci}, '_', pol, '_', num2str(cli), '.mat']);
-            if ~exist(fpath_skip, 'file'), continue; end
-            load(fpath_skip);   % loads 'data'
-
-            % ---- determine channel names and time range ----
-            chan_names = data.chan_names;
-            t_start    = data.t_start;
-            t_end      = data.t_end;
-
-            % ERP waveforms: use stored erp if available (polarity_reversal case),
-            % otherwise compute from grand average
-            if isfield(data, 'erp_exp') && isfield(data, 'erp_nov')
-                avg_exp_ch = data.erp_exp;
-                avg_nov_ch = data.erp_nov;
-            elseif ~isempty(chan_names)
-                cfg_sel = []; cfg_sel.channel = chan_names; cfg_sel.latency = [0.0, 0.5];
-                avg_exp_ch = ft_selectdata(cfg_sel, avg_exp_full);
-                avg_nov_ch = ft_selectdata(cfg_sel, avg_nov_full);
-            else
-                % no channel info (empty_time_range) — use all channels
-                cfg_sel = []; cfg_sel.latency = [0.0, 0.5];
-                avg_exp_ch = ft_selectdata(cfg_sel, avg_exp_full);
-                avg_nov_ch = ft_selectdata(cfg_sel, avg_nov_full);
-            end
-
-            erp_e = mean(avg_exp_ch.avg, 1);   % already in µV
-            erp_n = mean(avg_nov_ch.avg, 1);
-            t_erp = avg_exp_ch.time;
-
-            % significance shading from stat (all channels in cluster)
-            cluster_mask = data.cluster_mask;
-            sig_t  = any(cluster_mask, 1);
-            t_stat = stat.time;
-
-            y_all = [erp_e, erp_n];
-            pad_y = 0.15 * range(y_all);
-            if pad_y == 0, pad_y = 0.5; end
-            y_lo  = min(y_all) - pad_y;
-            y_hi  = max(y_all) + pad_y;
-
-            % --- topomap ---
-            tmp_stat      = stat;
-            tmp_stat.stat = zeros(size(stat.stat));
-            fig_tmp = figure('Visible', 'off', 'Units', 'pixels', ...
-                'Position', [0 0 220 220]);
-            cfg_t = [];
-            cfg_t.parameter          = 'stat';
-            cfg_t.layout             = 'easycapM11.mat';
-            cfg_t.style              = 'blank';
-            cfg_t.comment            = 'no';
-            cfg_t.colorbar           = 'no';
-            cfg_t.markers            = 'on';
-            cfg_t.markersize         = 3;
-            if ~isempty(chan_names)
-                cfg_t.highlight          = 'on';
-                cfg_t.highlightchannel   = chan_names;
-                cfg_t.highlightsymbol    = 'o';
-                cfg_t.highlightcolor     = [0.8 0 0];
-                cfg_t.highlightsize      = 8;
-                cfg_t.highlightlinewidth = 1.5;
-            else
-                cfg_t.highlight = 'off';
-            end
-            ft_topoplotER(cfg_t, tmp_stat);
-            topo_img = print(fig_tmp, '-RGBImage');
-            topo_img = imresize(topo_img, [220 220]);
-            close(fig_tmp);
-
-            % --- combined figure ---
-            fig = figure('Visible', 'off', 'Units', 'centimeters', ...
-                'Position', [0, 0, 16, 7]);
-
-            % ERP panel (left)
-            ax_erp = axes('Position', [0.09, 0.18, 0.56, 0.68]); %#ok<LAXES>
-            hold on;
-
-            % gray shading: cluster time span (may be empty for empty_time_range)
-            if ~isnan(t_start) && ~isnan(t_end)
-                fill([t_start t_end t_end t_start], [y_lo y_lo y_hi y_hi], ...
-                    col_skip, 'EdgeColor', 'none', 'FaceAlpha', 0.8);
-            end
-
-            % significance shading (cluster pixels from stat labelmat)
-            d = diff([false, sig_t(:)', false]);
-            ons  = find(d ==  1);
-            offs = find(d == -1) - 1;
-            for ri = 1:length(ons)
-                fill([t_stat(ons(ri)) t_stat(offs(ri)) t_stat(offs(ri)) t_stat(ons(ri))], ...
-                    [y_lo y_lo y_hi y_hi], col_sig, 'EdgeColor', 'none', 'FaceAlpha', 0.6);
-            end
-
-            xline(0, 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
-            yline(0, 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
-
-            h_e = plot(t_erp, erp_e, 'Color', col_exp, 'LineWidth', 1.5);
-            h_n = plot(t_erp, erp_n, 'Color', col_nov, 'LineWidth', 1.5);
-
-            if strcmp(conditions{ci}, 'go')
-                xline(mean_rt_exp, '--', 'Color', col_exp, 'LineWidth', 1.0, 'Alpha', 0.6);
-                xline(mean_rt_nov, '--', 'Color', col_nov, 'LineWidth', 1.0, 'Alpha', 0.6);
-            end
-
-            xlim([t_erp(1), t_erp(end)]);
-            ylim([y_lo, y_hi]);
-            xlabel('Time (s)', 'FontSize', 18);
-            ylabel('\muV',     'FontSize', 18);
-
-            % build title
-            title_str = sprintf('[SKIPPED] %s %s%d  p=%.4f', ...
-                conditions{ci}, pol, cli, clusters(cli).prob);
-            title(ax_erp, title_str, 'FontSize', 8, 'Interpreter', 'none');
-
-            legend([h_e, h_n], {'Experienced', 'Novice'}, ...
-                'Location', 'southwest', 'FontSize', 11.5, 'Box', 'off');
-            set(ax_erp, 'FontSize', 18, 'TickDir', 'out', 'Box', 'off');
-
-            % Topomap panel (right)
-            ax_topo = axes('Position', [0.70, 0.18, 0.28, 0.64]); %#ok<LAXES>
-            image(ax_topo, topo_img);
-            axis(ax_topo, 'image');
-            axis(ax_topo, 'off');
-
-            fname = [conditions{ci}, '_', pol, '_', num2str(cli), '.png'];
-            print(fig, '-dpng', '-r150', fullfile(res_fig_dis_dir, fname));
-            close(fig);
-            fprintf('Saved (skipped): %s\n', fname);
-        end
-    end
-end

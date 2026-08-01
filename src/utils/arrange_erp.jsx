@@ -45,10 +45,13 @@
 (function () {
 
     // ------------------------------------------------------------------
-    // 1. Select source folder
+    // 1. Source folder
     // ------------------------------------------------------------------
-    var folder = Folder.selectDialog("Select the individual folder");
-    if (!folder) { return; }
+    var folder = new Folder("C:/Users/kaito/workspace/exp1_EEG_analysis/result/fig_stat_erp_cbpt/individual");
+    if (!folder.exists) {
+        alert("Folder not found:\n" + folder.fullName);
+        return;
+    }
 
     // ------------------------------------------------------------------
     // 2. Active document check
@@ -95,8 +98,8 @@
     // 5. Condition definitions
     // ------------------------------------------------------------------
     var conditions = [
-        { label: "A - Go condition",    tags: ["go_pos_2", "go_pos_3", "go_neg_1"] },
-        { label: "B - No-Go condition", tags: ["nogo_pos_2", "nogo_neg_2"]         }
+        { label: "A (Go condition)",    tags: ["go_pos_2", "go_pos_3", "go_neg_1"] },
+        { label: "B (No-Go condition)", tags: ["nogo_pos_2", "nogo_neg_2"]         }
     ];
 
     // ------------------------------------------------------------------
