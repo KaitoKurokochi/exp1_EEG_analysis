@@ -14,10 +14,9 @@
 %   high-gamma60–95 Hz  → freq_group_cond_highgamma/
 %
 % Sections:
-%   1. statistics           — CBPT per condition × band
-%   2. color limits         — zlim per band from band-specific data
-%   3. composite figure     — 6 bands × 11 times SVG+PDF per condition
-%   4. individual PDFs      — vector PDFs for Illustrator layout (arrange_supp_*.jsx)
+%   1. statistics    — CBPT per condition × band
+%   2. color limits  — zlim per band from band-specific data
+%   3. individual PDFs — vector PDFs for Illustrator layout (arrange_supp_*.jsx)
 
 % Bands: {[f_lo f_hi], stat_name, data_directory}
 %   stat_name  : used in output filename, e.g. go_delta.mat
@@ -190,18 +189,25 @@ n_times = length(times);
 topo_sz = 400;
 
 % colorbar layout constants (match stat_freq_cbpt_alpha.m section 3)
-topo_cm_cb = 2.96;
-cb_w_cm    = 0.40;
-tick_cm    = 1.00;
-pad_l_cm   = 0.20;
-pad_r_cm   = 0.20;
-pad_v_cm   = 0.30;
-fig_cb_w   = pad_l_cm + cb_w_cm + tick_cm + pad_r_cm;
-fig_cb_h   = topo_cm_cb + 2*pad_v_cm;
-cb_x  = pad_l_cm   / fig_cb_w;
-cb_wn = cb_w_cm    / fig_cb_w;
-cb_y  = pad_v_cm   / fig_cb_h;
-cb_hn = topo_cm_cb / fig_cb_h;
+cb_font_sz   = 18;
+cb_label     = 'Difference (dB)';
+topo_cm_cb   = 2.96;
+cb_w_cm      = 0.40;
+tick_cm      = 1.00;
+label_w_cm   = 0.70;
+pad_l_cm     = 0.20;
+pad_r_cm     = 0.20;
+pad_v_cm     = 0.30;
+fig_cb_w     = pad_l_cm + cb_w_cm + tick_cm + label_w_cm + pad_r_cm;
+% dynamic height: label rotated 270 deg; char_w_cm maps string length to vertical extent
+char_w_cm    = cb_font_sz * 0.60 / 28.3465;
+lbl_half_cm  = numel(cb_label) * char_w_cm / 2;
+eff_pad_v_cm = max(pad_v_cm, lbl_half_cm - topo_cm_cb / 2);
+fig_cb_h     = eff_pad_v_cm + topo_cm_cb / 2 + lbl_half_cm + pad_v_cm;
+cb_x  = pad_l_cm     / fig_cb_w;
+cb_wn = cb_w_cm      / fig_cb_w;
+cb_y  = eff_pad_v_cm / fig_cb_h;
+cb_hn = topo_cm_cb   / fig_cb_h;
 
 for ci = 1:length(conditions)
     cond    = conditions{ci};
@@ -242,7 +248,7 @@ for ci = 1:length(conditions)
                 'Position', [0 0 topo_sz topo_sz]);
             cfg_t          = [];
             cfg_t.colorbar = 'no';
-            cfg_t.layout   = 'easycapM11.mat';
+            cfg_t.layout   = 'standard_waveguard64_1005_rotated.elc';
             cfg_t.colormap = 'jet';
             cfg_t.zlim     = zlim_diff;
             cfg_t.comment  = 'no';
@@ -274,11 +280,14 @@ for ci = 1:length(conditions)
         ax_tmp = axes('Position', [cb_x - 0.001, cb_y, cb_wn, cb_hn], 'Visible', 'off'); %#ok<LAXES>
         colormap(ax_tmp, jet(256));
         set(ax_tmp, 'CLim', zlim_diff, 'CLimMode', 'manual');
-        cb2          = colorbar(ax_tmp, 'Location', 'eastoutside');
-        cb2.Position = [cb_x, cb_y, cb_wn, cb_hn];
-        cb2.FontSize = 18;
-        cb2.Ticks    = [zlim_diff(1), 0, zlim_diff(2)];
-        cb2.TickLabels = {sprintf('%.1f', zlim_diff(1)), '0', sprintf('%.1f', zlim_diff(2))};
+        cb2                = colorbar(ax_tmp, 'Location', 'eastoutside');
+        cb2.Position       = [cb_x, cb_y, cb_wn, cb_hn];
+        cb2.FontSize       = cb_font_sz;
+        cb2.Ticks          = [zlim_diff(1), 0, zlim_diff(2)];
+        cb2.TickLabels     = {sprintf('%.1f', zlim_diff(1)), '0', sprintf('%.1f', zlim_diff(2))};
+        cb2.Label.String   = cb_label;
+        cb2.Label.FontSize = cb_font_sz;
+        cb2.Label.Rotation = 270;
         drawnow;
         fname_cb = fullfile(ind_dir, sprintf('colorbar_%s.pdf', band_name));
         exportgraphics(fig_cb, fname_cb, 'ContentType', 'vector');
@@ -288,4 +297,4 @@ for ci = 1:length(conditions)
     fprintf('[%s] %d topo PDFs + %d colorbars -> %s\n', cond, n_bands * n_times, n_bands, ind_dir);
 end
 
-disp('Section 4 done.');
+disp('Section 3 done.');
