@@ -3,12 +3,13 @@
 //
 // Layout:
 //   A                          B
-//   [experiment_condition_front] [experiment_condition_back]
+//   [image selected by user]   [image selected by user]
 //
 // Both images are scaled to IMG_W (see layout parameters below).
 // Labels "A" and "B" are left-aligned above each image.
 //
 // Usage: File > Scripts > Other Script ... > select this file
+//   The script will prompt you to select image A and image B in sequence.
 
 #target illustrator
 
@@ -19,9 +20,19 @@
     // ------------------------------------------------------------------
     try {
 
-    // ---- Source file paths (use forward slashes) ---------------------
-    var FILE_FRONT = "C:/Users/kaito/Downloads/experiment_condition_front.pdf";
-    var FILE_BACK  = "C:/Users/kaito/Downloads/experiment_condition_back.pdf";
+    // ---- Select source files via dialog ------------------------------
+    var fileA = File.openDialog("Select image A (left panel)", "*.pdf;*.ai;*.png;*.jpg", false);
+    if (fileA === null) {
+        alert("No file selected for panel A. Script cancelled.");
+        return;
+    }
+    var fileB = File.openDialog("Select image B (right panel)", "*.pdf;*.ai;*.png;*.jpg", false);
+    if (fileB === null) {
+        alert("No file selected for panel B. Script cancelled.");
+        return;
+    }
+    var FILE_FRONT = fileA.fsName.replace(/\\/g, "/");
+    var FILE_BACK  = fileB.fsName.replace(/\\/g, "/");
 
     // ------------------------------------------------------------------
     // 1.  Get active document
