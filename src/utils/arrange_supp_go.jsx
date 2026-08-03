@@ -119,7 +119,7 @@
 
         // ---- data definitions -----------------------------------------
         var ROW_NAMES  = ["Theta", "alpha", "beta", "Low_gamma", "High_gamma"];
-        var ROW_LABELS = ["A (theta)", "B (alpha)", "C (beta)", "D (low-gamma)", "E (high-gamma)"];
+        var ROW_LABELS = ["theta", "alpha", "beta", "low-gamma", "high-gamma"];
         var TIMES_MS   = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
         var NR = ROW_NAMES.length;   // 5

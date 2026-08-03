@@ -2,16 +2,16 @@
 // Adobe Illustrator ExtendScript
 //
 // Layout (inside each bordered box, top to bottom):
-//   "Go" (large font, top)
-//   0 ms  50 ms  100 ms  ...  500 ms   <- time-label row
-//   Experienced                         <- group label
-//   [T0] [T1] [T2] ... [T10]  [CB_grp] <- topo row + colorbar
+//   "A" (upper-left, bold) + "Go Condition" (centred, bold) <- panel letter + condition label
+//   0 ms  50 ms  100 ms  ...  500 ms                        <- time-label row
+//   Experienced                                              <- group label (left-aligned)
+//   [T0] [T1] [T2] ... [T10]  [CB_grp]                     <- topo row + colorbar
 //   Novice
 //   [T0] [T1] [T2] ... [T10]  [CB_grp]
-//   Difference
+//   Experienced - Novice
 //   [T0] [T1] [T2] ... [T10]  [CB_diff]
 //
-//   No-Go box follows below with the same structure.
+//   No-Go box follows below with the same structure (panel letter "B").
 //
 // Input folder: result/fig_freq_alpha_topo/individual/
 // Expected files:
@@ -83,13 +83,14 @@
         return r;
     }
 
-    // Add a text frame centred at (cx, cy). Applies ARIAL_FONT when available.
-    function addText(str, fontSize, cx, cy) {
+    // Add a text frame centred at (cx, cy). Pass useBold=true for Arial Bold.
+    function addText(str, fontSize, cx, cy, useBold) {
         var tf = _doc.textFrames.add();
         tf.contents = str;
         var ca = tf.textRange.characterAttributes;
         ca.size = fontSize;
-        if (ARIAL_FONT !== null) { ca.textFont = ARIAL_FONT; }
+        var fnt = (useBold && ARIAL_BOLD_FONT !== null) ? ARIAL_BOLD_FONT : ARIAL_FONT;
+        if (fnt !== null) { ca.textFont = fnt; }
         tf.position = [cx - tf.width / 2, cy + tf.height / 2];
         return tf;
     }
@@ -195,16 +196,12 @@
         }
 
         // ---- data definitions -----------------------------------------
-        var COND_KEYS   = ["go",    "nogo"];
-        var COND_TITLES = ["Go Condition",    "No-Go Condition"];
-        var GRP_KEYS    = ["exp",   "nov",    "diff"];
-        // GRP_LABELS[ci][ri]: panel letters assigned sequentially across conditions
-        //   Go:    A (Experienced), B (Novice), C (Difference)
-        //   No-Go: D (Experienced), E (Novice), F (Difference)
-        var GRP_LABELS  = [
-            ["A (Experienced)", "B (Novice)", "C (Difference)"],
-            ["D (Experienced)", "E (Novice)", "F (Difference)"]
-        ];
+        var COND_KEYS     = ["go",    "nogo"];
+        var COND_TITLES   = ["Go Condition",    "No-Go Condition"];
+        var PANEL_LETTERS = ["A", "B"];
+        var GRP_KEYS      = ["exp",   "nov",    "diff"];
+        // GRP_NAMES: row labels without panel letters (A/B placed separately at box upper-left)
+        var GRP_NAMES     = ["Experienced", "Novice", "Experienced - Novice"];
         var CB_NAMES    = ["colorbar_grp", "colorbar_grp", "colorbar_diff"];
         var TIMES_MS    = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
@@ -273,8 +270,9 @@
             // curY walks downward from the top inner edge of the box
             curY = boxTop - BOX_PAD;
 
-            // 1. Condition label ("Go" / "No-Go")  -- left-aligned, bold
-            addLeftText(COND_TITLES[ci], FONT_SIZE, topoGridLeft, curY - COND_H / 2, true);
+            // 1. Panel letter (upper-left inside box, bold) + condition label (centred, bold)
+            addLeftText(PANEL_LETTERS[ci], FONT_SIZE, boxLeft + BOX_PAD + 4, curY - COND_H / 2, true);
+            addText(COND_TITLES[ci], FONT_SIZE, boxLeft + SEC_BOX_W / 2, curY - COND_H / 2, true);
             curY = curY - COND_H;
 
             // 2. Time labels (one per topo column) -- centred above each column
@@ -289,7 +287,7 @@
             // 3. Group rows (Experienced / Novice / Difference)
             for (ri = 0; ri < NR; ri++) {
                 // group label -- left-aligned
-                addLeftText(GRP_LABELS[ci][ri], FONT_SIZE, topoGridLeft, curY - GRP_LABEL_H / 2, true);
+                addLeftText(GRP_NAMES[ri], FONT_SIZE, topoGridLeft, curY - GRP_LABEL_H / 2, true);
                 curY = curY - GRP_LABEL_H;
 
                 // --- Step 1: place colorbar first to measure actual row height ---

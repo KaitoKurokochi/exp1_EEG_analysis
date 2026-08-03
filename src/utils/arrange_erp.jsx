@@ -98,8 +98,8 @@
     // 5. Condition definitions
     // ------------------------------------------------------------------
     var conditions = [
-        { label: "A (Go condition)",    tags: ["go_pos_2", "go_pos_3", "go_neg_1"] },
-        { label: "B (No-Go condition)", tags: ["nogo_pos_2", "nogo_neg_2"]         }
+        { letter: "A", title: "Go condition",    tags: ["go_pos_2", "go_pos_3", "go_neg_1"] },
+        { letter: "B", title: "No-Go condition", tags: ["nogo_pos_2", "nogo_neg_2"]         }
     ];
 
     // ------------------------------------------------------------------
@@ -277,14 +277,25 @@
         borderRect.strokeColor = strokeCol;
         borderRect.strokeWidth = 2.0;
 
-        // ---- Add condition label (bold, upper-left inside LABEL_AREA zone) ----
-        var textItem = doc.textFrames.add();
-        textItem.contents = cond.label;
-        var charAttr = textItem.textRange.characterAttributes;
-        charAttr.size = LABEL_SIZE;
-        if (boldFont) { charAttr.textFont = boldFont; }
-        textItem.position = [
+        // ---- Add panel letter (bold, upper-left inside LABEL_AREA zone) ----
+        var letterItem = doc.textFrames.add();
+        letterItem.contents = cond.letter;
+        var letterAttr = letterItem.textRange.characterAttributes;
+        letterAttr.size = LABEL_SIZE;
+        if (boldFont) { letterAttr.textFont = boldFont; }
+        letterItem.position = [
             boxLeft + LABEL_MARGIN,
+            boxTop  - LABEL_MARGIN
+        ];
+
+        // ---- Add condition title (bold, horizontally centred in box) ----
+        var titleItem = doc.textFrames.add();
+        titleItem.contents = cond.title;
+        var titleAttr = titleItem.textRange.characterAttributes;
+        titleAttr.size = LABEL_SIZE;
+        if (boldFont) { titleAttr.textFont = boldFont; }
+        titleItem.position = [
+            (cMinX + cMaxX) / 2 - titleItem.width / 2,
             boxTop  - LABEL_MARGIN
         ];
     }
