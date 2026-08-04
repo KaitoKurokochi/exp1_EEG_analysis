@@ -190,7 +190,7 @@ topo_sz = 400;
 
 % colorbar layout constants (match stat_freq_cbpt_alpha.m section 3)
 cb_font_sz   = 18;
-cb_label     = 'Difference (db)';
+cb_label     = '\DeltaPower (dB)';
 topo_cm_cb   = 2.96;
 cb_w_cm      = 0.40;
 tick_cm      = 1.00;

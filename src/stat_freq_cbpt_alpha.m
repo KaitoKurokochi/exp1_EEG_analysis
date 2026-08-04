@@ -232,7 +232,9 @@ fprintf('zlim Diff:    [%.4f, %.4f]\n', zlim_diff(1), zlim_diff(2));
 % ---- colorbar layout parameters ----
 cb_font_sz = 18;
 cb_tags    = {'grp',           'diff'};
-cb_labels  = {'Power (db)',    'Difference (db)'};
+% Literal Unicode Δ exported as '#' in the PDF; '\Delta' (tex) fixed it.
+cb_labels     = {'Power (dB)',    '\DeltaPower (dB)'};
+cb_label_lens = {10,              11};  % rendered length, for padding calc
 zlims_cb   = {zlim_grp,        zlim_diff};
 topo_cm_cb = 2.96;   % must match topo_sz rendering in topomap section
 cb_w_cm    = 0.40;   % colorbar bar width
@@ -254,7 +256,7 @@ cb_wn = cb_w_cm  / fig_cb_w;
 
 disp('--- saving colorbar PDFs ---');
 for k = 1:2
-    lbl_half_cm  = numel(cb_labels{k}) * char_w_cm / 2;
+    lbl_half_cm  = cb_label_lens{k} * char_w_cm / 2;
     % Ensure label bottom (= bar_center - lbl_half) >= 0
     eff_pad_v_cm = max(pad_v_cm, lbl_half_cm - topo_cm_cb/2);
     % Figure height: label top + top padding
@@ -273,9 +275,10 @@ for k = 1:2
     cb2.FontSize        = cb_font_sz;
     cb2.Ticks           = [zlims_cb{k}(1), 0, zlims_cb{k}(2)];
     cb2.TickLabels      = {sprintf('%.1f', zlims_cb{k}(1)), '0', sprintf('%.1f', zlims_cb{k}(2))};
-    cb2.Label.String    = cb_labels{k};
-    cb2.Label.FontSize  = cb_font_sz;
-    cb2.Label.Rotation  = 270;
+    cb2.Label.String      = cb_labels{k};
+    cb2.Label.Interpreter = 'tex';
+    cb2.Label.FontSize    = cb_font_sz;
+    cb2.Label.Rotation    = 270;
     drawnow;
     fname_cb = fullfile(ind_dir, sprintf('colorbar_%s.pdf', cb_tags{k}));
     exportgraphics(fig_cb, fname_cb, 'ContentType', 'vector');
