@@ -3,7 +3,7 @@
 //
 // Places individual band-specific diff topomap PDFs (from stat_freq_cbpt.m section 3)
 // into a 5-row x 11-column panel grid on the active artboard.
-// This script is for the No-Go condition supplementary figure.
+// This script is for the No-Go trials supplementary figure.
 //
 // Frequency bands follow Minami et al. (2024).
 //
@@ -235,7 +235,7 @@
         }
 
         // ---- report ----------------------------------------------------
-        var msg = "No-Go condition - supplementary figure: Done.\n\n" +
+        var msg = "No-Go trials - supplementary figure: Done.\n\n" +
                   "Topomap PDFs placed : " + placed_count + "\n" +
                   "Colorbar PDFs placed: " + cb_placed    + "\n" +
                   "Time labels         : " + NC           + "\n" +

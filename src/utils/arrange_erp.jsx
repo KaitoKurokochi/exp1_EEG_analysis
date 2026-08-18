@@ -4,10 +4,10 @@
 // Place Go and No-Go ERP panels side-by-side in a single document.
 // Each condition is placed in its own bordered box:
 //
-//   [Go condition box]  [GAP_COND]  [No-Go condition box]
+//   [Go trials box]  [GAP_COND]  [No-Go trials box]
 //
 // Inside each box:
-//   [LABEL_AREA: "Go condition" / "No-Go condition" label (bold)]
+//   [LABEL_AREA: "Go trials" / "No-Go trials" label (bold)]
 //   [PAD]
 //   [ERP row 1: waveform | topomap]
 //   ...
@@ -98,8 +98,8 @@
     // 5. Condition definitions
     // ------------------------------------------------------------------
     var conditions = [
-        { letter: "A", title: "Go condition",    tags: ["go_pos_2", "go_pos_3", "go_neg_1"] },
-        { letter: "B", title: "No-Go condition", tags: ["nogo_pos_2", "nogo_neg_2"]         }
+        { letter: "A", title: "Go trials",    tags: ["go_pos_2", "go_pos_3", "go_neg_1"] },
+        { letter: "B", title: "No-Go trials", tags: ["nogo_pos_2", "nogo_neg_2"]         }
     ];
 
     // ------------------------------------------------------------------
@@ -136,7 +136,7 @@
     var erpScaleFactor = 1.0;
     var scaleKnown     = false;
 
-    // Bottom Y of the Go condition box (Illustrator coords: Y increases upward).
+    // Bottom Y of the Go trials box (Illustrator coords: Y increases upward).
     // Saved after Go (ci=0) is processed so that the No-Go box (ci=1) can be
     // extended downward to match, regardless of how many rows No-Go has.
     var goBoxBottom = null;

@@ -2,7 +2,7 @@
 // Adobe Illustrator ExtendScript
 //
 // Layout (inside each bordered box, top to bottom):
-//   "A" (upper-left, bold) + "Go Condition" (centred, bold) <- panel letter + condition label
+//   "A" (upper-left, bold) + "Go trials" (centred, bold) <- panel letter + condition label
 //   0 ms  50 ms  100 ms  ...  500 ms                        <- time-label row
 //   Experienced                                              <- group label (left-aligned)
 //   [T0] [T1] [T2] ... [T10]  [CB_grp]                     <- topo row + colorbar
@@ -197,7 +197,7 @@
 
         // ---- data definitions -----------------------------------------
         var COND_KEYS     = ["go",    "nogo"];
-        var COND_TITLES   = ["Go Condition",    "No-Go Condition"];
+        var COND_TITLES   = ["Go trials",    "No-Go trials"];
         var PANEL_LETTERS = ["A", "B"];
         var GRP_KEYS      = ["exp",   "nov",    "diff"];
         // GRP_NAMES: row labels without panel letters (A/B placed separately at box upper-left)
