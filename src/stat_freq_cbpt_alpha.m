@@ -282,7 +282,15 @@ for k = 1:2
     drawnow;
     fname_cb = fullfile(ind_dir, sprintf('colorbar_%s.pdf', cb_tags{k}));
     exportgraphics(fig_cb, fname_cb, 'ContentType', 'vector');
+    % Diff colorbar without label for the poster: the tex label embeds the
+    % math font mwb_cmr10, which Illustrator cannot substitute. The label is
+    % added as Arial text in arrange_alpha_diff_poster.jsx instead.
+    if strcmp(cb_tags{k}, 'diff')
+        cb2.Label.String = '';
+        drawnow;
+        exportgraphics(fig_cb, fullfile(ind_dir, 'colorbar_diff_nolabel.pdf'), 'ContentType', 'vector');
+    end
     close(fig_cb);
     fprintf('  saved: %s\n', cb_tags{k});
 end
-fprintf('Saved 2 colorbar PDFs to:\n  %s\n', ind_dir);
+fprintf('Saved colorbar PDFs to:\n  %s\n', ind_dir);
